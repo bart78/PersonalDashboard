@@ -11,3 +11,6 @@ cloud/node_modules/
 
 # macOS
 .DS_Store
+
+# private cloud functions (screenshot service, etc.)
+cloud/

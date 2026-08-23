@@ -70,13 +70,16 @@ E-paper shows a *static* image almost for free — so the device treats everythi
 
 ```
 firmware/     PlatformIO firmware (the shell, readers, todos, sleep)
-cloud/        Firebase Functions: screenshot service, weather page,
-              news text, todo page (recoverable, deployable)
 web/          Static pages: todo phone app, weather/contacts samples
 tools/        Design pipeline: render_home.py (UI), make_book.py (books),
               img2epd.py (image conversion)
 books/        Public-domain seed book (The House on the Borderland)
+database.rules.json   Firebase RTDB rules for the todo list
 ```
+
+The cloud-side services (URL→1-bit-PNG renderer, weather/news/todo
+endpoints) are intentionally kept private — see *Cloud services* below
+for the exact contracts to reimplement.
 
 ## Getting started
 
@@ -111,22 +114,40 @@ lib_deps = GxEPD2, Adafruit GFX Library, PNGdec, ArduinoJson
 - Platformio's `board_build.arduino.memory_type` resolves from the board JSON; the ini key alone silently drops PSRAM config.
 - The serial console runs at 115200 on the CH340 UART bridge.
 
-### 2. Cloud functions
+### 2. Cloud services
 
-```bash
-cd cloud
-cp .firebaserc.example .firebaserc   # your project id
-firebase functions:secrets:set OWM_KEY  # weather
-firebase functions:secrets:set TODO_DB  # todo page (RTDB URL)
-firebase deploy --only functions
+The device consumes three cloud services. The reference implementations
+are kept private (they run on personal infrastructure), but the
+contracts are exact — any server that meets them works:
+
+**a) URL → 1-bit page renderer** (the heart of the pipeline)
+
+```
+GET /?url=<encoded-page-url>&width=272&height=792&monochrome=true&dither=true
+→ 200 image/png (1-bit palette, exact dimensions)
 ```
 
-| Function | Purpose | Env |
-|---|---|---|
-| `screenshot` | HTML → 1-bit PNG (the heart of the pipeline) | `SCREENSHOT_API_KEY` (optional) |
-| `weatherPage` | server-rendered weather (OpenWeatherMap, Seoul) | `OWM_KEY` |
-| `newsText` | Google News RSS → plain text for the reader | — |
-| `todoPage` | RTDB todos → styled page (optional; the device has its own todo UI) | `TODO_DB` |
+A headless browser renders the page, sharp converts to 1-bit with
+Floyd–Steinberg dithering. Deterministic pages (server-rendered, no
+page-side async JS) are essential — the client captures shortly after
+load. The page's browser does its own API calls, so keys stay in the
+cloud.
+
+**b) Text endpoint** (news, ebooks)
+
+```
+GET /api/news → 200 text/plain
+```
+
+Serves plain text; the device paginates and renders it. Two hard
+lessons: serve `Content-Length` (or expect the client to read until
+EOF — chunked streams without a length are common from Next.js), and
+keep responses under ~256 KB.
+
+**c) Firebase Realtime Database** (todos)
+
+`/todo` with public read + write-only-under-`/todo` (see
+`database.rules.json`). See *Todos* below.
 
 ### 3. Web
 
