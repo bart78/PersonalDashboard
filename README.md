@@ -145,11 +145,11 @@ RTDB structure (console-editable):
 
 ```
 /todo
-  "milk": { "text": "Buy milk", "done": true }
-  "mom":  { "text": "Call mom", "done": false }
+  "1753000000000": { "text": "Buy milk", "done": true }
+  "1753000100000": { "text": "Call mom", "done": false }
 ```
 
-Plain strings also work (`"key": "Walk the dog"` = not done). The device toggles locally (offline-queued, `PENDING` footer) and PATCHes on reconnect.
+**Keys are timestamps** (`Date.now()` — the web app writes them) so lexical order = chronological order on both the device and the app. Plain strings also work (`"key": "Walk the dog"` = not done). The device toggles locally (offline-queued, `PENDING` footer) and PATCHes on reconnect.
 
 ## Design pipeline
 
