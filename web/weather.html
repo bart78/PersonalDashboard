@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+
+<title>Weather</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 272px; height: 792px; background: #fff; color: #000; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; padding: 14px; }
+  .topline { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .rule { border-top: 1px solid #000; margin: 8px 0; }
+  .city { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-top: 6px; }
+  .temp { font-family: Georgia, serif; font-size: 64px; font-weight: bold; margin-top: 6px; }
+  .cond { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+  .detail { font-size: 10px; letter-spacing: 1px; margin-top: 12px; line-height: 1.8; }
+  .fhead { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; margin-top: 18px; }
+  .fc { display: flex; margin-top: 8px; }
+  .fc .day { flex: 1; text-align: center; font-size: 9px; }
+  .fc .day .t { font-family: Georgia, serif; font-size: 18px; font-weight: bold; margin-top: 4px; }
+  .fc .day .h { font-size: 8px; margin-top: 2px; letter-spacing: 1px; }
+  .foot { margin-top: 24px; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+  <div id="banner" style="font-size:16px;font-weight:bold;letter-spacing:3px"></div>
+  <div class="topline"><span>WEATHER</span><span>SEOUL</span></div>
+  <div class="rule"></div>
+  <div class="city">NOW</div>
+  <div class="temp" id="temp">--°</div>
+  <div class="cond" id="cond">--</div>
+  <div class="detail" id="detail"></div>
+  <div class="rule"></div>
+  <div class="fhead">NEXT 12 HOURS</div>
+  <div class="fc" id="fc"></div>
+  <div class="rule"></div>
+  <div class="foot"><span>MENU · SYNC</span><span id="time">--:--</span></div>
+
+<script>
+const KEY = new URLSearchParams(location.search).get("key") || "";
+const LAT = 37.568, LON = 126.978;
+
+async function load() {
+  const banner = document.getElementById("banner");
+  try {
+    banner.textContent = "FETCHING";
+    const [cur, fc] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&appid=${KEY}&units=metric`).then(r => r.json()),
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${LAT}&lon=${LON}&appid=${KEY}&units=metric`).then(r => r.json())
+    ]);
+    document.getElementById("temp").textContent = Math.round(cur.main.temp) + "°";
+    document.getElementById("cond").textContent = cur.weather[0].description;
+    document.getElementById("detail").innerHTML =
+      "HUM " + Math.round(cur.main.humidity) + "%&nbsp;&nbsp;WIND " + Math.round(cur.wind.speed) + "m/s<br>" +
+      "HI " + Math.round(cur.main.temp_max) + "°&nbsp;&nbsp;LO " + Math.round(cur.main.temp_min) + "°";
+    const box = document.getElementById("fc");
+    box.innerHTML = "";
+    const now = Date.now() / 1000;
+    const list = fc.list.filter(x => x.dt > now - 3600).slice(0, 4);
+    list.forEach(x => {
+      const d = new Date(x.dt * 1000);
+      const hh = d.getHours();
+      const div = document.createElement("div");
+      div.className = "day";
+      div.innerHTML = `<div>${hh}:00</div><div class="t">${Math.round(x.main.temp)}°</div><div class="h">${x.weather[0].main}</div>`;
+      box.appendChild(div);
+    });
+    const t = new Date();
+    document.getElementById("time").textContent =
+      String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0");
+    banner.textContent = "DATA OK";
+  } catch (e) {
+    document.getElementById("temp").textContent = "--";
+    document.getElementById("cond").textContent = "NO DATA";
+    banner.textContent = "ERR " + e;
+  }
+}
+load();
+</script>
+</body>
+</html>

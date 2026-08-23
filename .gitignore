@@ -1,0 +1,13 @@
+# personal config
+firmware/src/config.h
+.firebaserc
+
+# build artifacts
+firmware/.pio/
+cloud/node_modules/
+
+# local archive (dev archaeology, stock firmware)
+.archive/
+
+# macOS
+.DS_Store

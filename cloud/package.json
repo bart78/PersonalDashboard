@@ -1,0 +1,29 @@
+{
+  "name": "htm2png",
+  "description": "Takes a URL, returns a PNG as a response",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@sparticuz/chromium": "^138.0.0",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.4.0",
+    "puppeteer-core": "^22.15.0",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0",
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
