@@ -5,22 +5,80 @@
 <title>QR</title>
 <style>
   html, body { margin: 0; padding: 0; background: #fff; }
-  body { width: 272px; height: 792px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
-  #qr svg { display: block; width: 272px; height: 272px; }
-  #label { margin-top: 36px; padding: 0 20px; font-size: 20px; color: #000; text-align: center; word-break: break-all; max-height: 120px; overflow: hidden; }
+  body { width: 272px; height: 792px; overflow: hidden; }
+  #wrap { width: 100%; height: 100%; box-sizing: border-box; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: 6px; }
+  .cell { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; max-width: 100%; }
+  .cell svg { display: block; }
+  .lbl { font-family: sans-serif; font-weight: bold; text-align: center; max-width: 256px; word-break: break-all; }
+  .txt { font-family: sans-serif; text-align: center; word-break: break-all; max-width: 256px; color: #333; }
+
+  #wrap.n1 { justify-content: center; }
+  #wrap.n2, #wrap.n3 { justify-content: space-evenly; }
+  #wrap.n4 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-evenly; justify-items: center; }
+  #wrap.n5 { display: grid; grid-template-columns: 1fr 1fr; align-content: space-evenly; justify-items: center; }
+  #wrap.n5 .cell:nth-child(5) { grid-column: 1 / -1; }
+  #wrap.n6 { display: grid; grid-template-columns: repeat(3, 1fr); align-content: space-evenly; justify-items: center; }
+
+  #wrap.n1 .lbl { font-size: 22px; margin-top: 20px; }
+  #wrap.n1 .txt { font-size: 14px; margin-top: 6px; }
+  #wrap.n2 .lbl { font-size: 17px; margin-top: 10px; }
+  #wrap.n2 .txt { font-size: 11px; margin-top: 4px; }
+  #wrap.n3 .lbl { font-size: 15px; margin-top: 8px; }
+  #wrap.n3 .txt { font-size: 10px; margin-top: 3px; }
+  #wrap.n4 .lbl { font-size: 13px; margin-top: 6px; }
+  #wrap.n4 .txt { font-size: 9px; margin-top: 2px; }
+  #wrap.n5 .lbl { font-size: 13px; margin-top: 6px; }
+  #wrap.n5 .txt { font-size: 9px; margin-top: 2px; }
+  #wrap.n6 .lbl { font-size: 10px; margin-top: 4px; }
+  #wrap.n6 .txt { font-size: 8px; margin-top: 2px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body>
-<div id="qr"></div>
-<div id="label"></div>
+<div id="wrap"></div>
 <script>
-  const d = new URLSearchParams(location.search).get("d") || "https://github.com/bart78/PersonalDashboard";
-  const qr = qrcode(0, "M");
-  qr.addData(d);
-  qr.make();
-  document.getElementById("qr").innerHTML = qr.createSvgTag(6, 0);
-  document.getElementById("label").textContent = d;
+  const p = new URLSearchParams(location.search);
+  const items = [];
+  const single = p.get("d");
+  if (single) items.push({ label: "", text: single });
+  for (let i = 1; i <= 6; i++) {
+    const t = p.get("t" + i);
+    if (t != null) items.push({ label: p.get("l" + i) || "", text: t });
+  }
+  if (items.length === 0) items.push({ label: "", text: "https://github.com/bart78/PersonalDashboard" });
+
+  const CFG = {
+    1: { qr: 220, label: 22, txt: 14 },
+    2: { qr: 190, label: 17, txt: 11 },
+    3: { qr: 150, label: 15, txt: 10 },
+    4: { qr: 108, label: 13, txt: 9 },
+    5: { qr: 108, label: 13, txt: 9 },
+    6: { qr: 76, label: 10, txt: 8 },
+  };
+  const n = Math.min(items.length, 6);
+  const cfg = CFG[n];
+  const wrap = document.getElementById("wrap");
+  wrap.className = "n" + n;
+
+  for (const it of items.slice(0, n)) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    const qr = qrcode(0, "M");
+    qr.addData(it.text);
+    qr.make();
+    const svg = document.createElement("div");
+    svg.innerHTML = qr.createSvgTag(cfg.qr, 0);
+    svg.firstChild.setAttribute("width", cfg.qr);
+    svg.firstChild.setAttribute("height", cfg.qr);
+    cell.appendChild(svg);
+    if (it.label) {
+      const l = document.createElement("div");
+      l.className = "lbl";
+      l.textContent = it.label;
+      cell.appendChild(l);
+    }
+    wrap.appendChild(cell);
+  }
 </script>
 </body>
 </html>
