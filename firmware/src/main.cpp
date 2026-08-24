@@ -771,7 +771,18 @@ void fetchConfig()
             for (JsonVariant v : cu.as<JsonArray>())
             {
                 if (!v.isNull() && i < NUM_CARDS)
-                    snprintf(rtUrls[i], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                {
+                    if (v.is<JsonObject>())
+                    {
+                        snprintf(rtUrls[i], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+                        rtStatic[i] = v["static"] | false;
+                    }
+                    else
+                    {
+                        snprintf(rtUrls[i], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                        rtStatic[i] = false;
+                    }
+                }
                 i++;
             }
         }

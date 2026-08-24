@@ -120,7 +120,7 @@ async function load() {
 function render() {
   const cards = document.getElementById("cards");
   cards.innerHTML = "";
-  const ROW_ORDER = [0, 1, 2, 3, 4, 6, 7];
+  const ROW_ORDER = [0, 1, 2, 3, 4, 7];
   ROW_ORDER.forEach((i) => {
     const u = cardUrls[i];
     const div = document.createElement("div");
@@ -199,7 +199,7 @@ function addGal() {
 }
 
 async function save() {
-  const ROW_ORDER = [0, 1, 2, 3, 4, 6, 7];
+  const ROW_ORDER = [0, 1, 2, 3, 4, 7];
   const body = {
     card_urls: Object.fromEntries(ROW_ORDER.map((i) => [String(i), { url: cardUrls[i], static: cardStatic[i] }])),
     gallery,

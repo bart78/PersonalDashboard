@@ -50,14 +50,25 @@
   <div id="list"></div>
   <div class="status" id="status"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
-const BASE = new URLSearchParams(location.search).get("db") || "REPLACE_WITH_YOUR_RTDB_URL";
-const DB = BASE + "/todo.json";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBGOR49t5alnHu0plhyRRud2ibC9_Qeex0",
+  authDomain: "crow-c66ca.firebaseapp.com",
+  databaseURL: "https://crow-c66ca-default-rtdb.firebaseio.com",
+  projectId: "crow-c66ca",
+  storageBucket: "crow-c66ca.firebasestorage.app",
+  messagingSenderId: "957271416152",
+  appId: "1:957271416152:web:5c3618ab93b9a34a9e592d"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
 
 async function load() {
   try {
-    const r = await fetch(DB);
-    const data = await r.json();
+    const snap = await db.ref("todo").once("value");
+    const data = snap.val();
     const entries = Object.entries(data || {}).filter(([, v]) => v != null);
     const items = entries
       .map(([k, v]) => ({ key: k, text: (v && v.text) || String(v), done: !!(v && v.done) }))
