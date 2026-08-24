@@ -107,16 +107,12 @@ function render(items) {
 }
 
 async function toggle(it) {
-  const r = await fetch(BASE + "/todo/" + it.key + ".json", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ done: !it.done }),
-  });
+  await db.ref("todo/" + it.key).update({ done: !it.done });
   load();
 }
 
 async function remove(key) {
-  await fetch(BASE + "/todo/" + key + ".json", { method: "DELETE" });
+  await db.ref("todo/" + key).remove();
   load();
 }
 
@@ -125,11 +121,7 @@ async function addItem() {
   const text = input.value.trim();
   if (!text) return;
   const key = String(Date.now());
-  const r = await fetch(BASE + "/todo/" + key + ".json", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, done: false }),
-  });
+  await db.ref("todo/" + key).set({ text, done: false });
   input.value = "";
   load();
 }
