@@ -563,12 +563,36 @@ bool decodePage(const uint8_t *data, size_t len)
     return true;
 }
 
+void urlEncode(const char *in, char *out, size_t outLen)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    size_t o = 0;
+    for (const char *p = in; *p && o + 3 < outLen; p++)
+    {
+        unsigned char c = (unsigned char)*p;
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+            c == '-' || c == '_' || c == '.' || c == '~')
+        {
+            out[o++] = c;
+        }
+        else
+        {
+            out[o++] = '%';
+            out[o++] = hex[c >> 4];
+            out[o++] = hex[c & 0xF];
+        }
+    }
+    out[o] = 0;
+}
+
 bool fetchPageUrl(int idx, const char *pageUrl, uint8_t **outBuf, size_t *outLen)
 {
+    char enc[768];
+    urlEncode(pageUrl, enc, sizeof(enc));
     char url[1024];
     snprintf(url, sizeof(url),
              "%s/?url=%s&width=%d&height=%d&monochrome=true&dither=true",
-             SCREENSHOT_BASE, pageUrl, PAGE_W, PAGE_H);
+             SCREENSHOT_BASE, enc, PAGE_W, PAGE_H);
     HTTPClient http;
     if (!http.begin(url))
         return false;
@@ -1561,10 +1585,6 @@ void loop()
         else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx > 0)
         {
             galIdx--;
-            Preferences gp;
-            gp.begin("crow", false);
-            gp.putInt("galIdx", galIdx);
-            gp.end();
             render();
         }
         else if (screen == SCREEN_CARD && curCard == 7 && todoMode && todoSel > 0)
@@ -1606,10 +1626,6 @@ void loop()
         else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx < galCount - 1)
         {
             galIdx++;
-            Preferences gp;
-            gp.begin("crow", false);
-            gp.putInt("galIdx", galIdx);
-            gp.end();
             render();
         }
         else if (screen == SCREEN_CARD && curCard == 7 && todoMode && todoSel < todoCount - 1)
@@ -1636,12 +1652,7 @@ void loop()
             screen = SCREEN_CARD;
             if (curCard == 6 && galCount > 0)
             {
-                Preferences gp;
-                gp.begin("crow", false);
-                galIdx = gp.getInt("galIdx", 0);
-                gp.end();
-                if (galIdx >= galCount)
-                    galIdx = 0;
+                galIdx = 0;
                 galMode = true;
                 Serial.printf("Gallery open: %d items\n", galCount);
             }
