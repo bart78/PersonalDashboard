@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>QR</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { width: 272px; height: 792px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
+  #qr svg { display: block; width: 272px; height: 272px; }
+  #label { margin-top: 36px; padding: 0 20px; font-size: 20px; color: #000; text-align: center; word-break: break-all; max-height: 120px; overflow: hidden; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+<div id="qr"></div>
+<div id="label"></div>
+<script>
+  const d = new URLSearchParams(location.search).get("d") || "https://github.com/bart78/PersonalDashboard";
+  const qr = qrcode(0, "M");
+  qr.addData(d);
+  qr.make();
+  document.getElementById("qr").innerHTML = qr.createSvgTag(6, 0);
+  document.getElementById("label").textContent = d;
+</script>
+</body>
+</html>
