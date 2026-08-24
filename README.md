@@ -168,10 +168,20 @@ Compiled defaults in `config.h` are the offline fallback.
 
 ```
 /config
-  "card_urls": { "0": "https://…/weather", "2": "https://…/calendar", … }
+  "card_urls": {
+    "0": { "url": "https://…/weather", "static": false },   // dynamic: sync every time
+    "6": { "url": "https://…/bizcard", "static": true  }    // static: sync only when URL changes
+  }
   "gallery":   { "1": "https://…/bizcard", "2": "https://…/bus-qr" }
+  "books":     { "The House on the Borderland": { "url": "https://www.gutenberg.org/…" } }
   "news_url":  "https://…/api/news"
 ```
+
+Each card URL may be a plain string (dynamic) or `{url, static}`. Static
+entries (books, bizcards, coupons) sync only when the URL changes —
+fingerprinted in NVS — saving battery and time; dynamic ones (weather,
+news) refresh on every sync. Books listed under `books` are fetched
+once, cached, and appear in the BOOKS tile's selector.
 
 Deploy `web/config.html` — a phone editor for all of it. The portal
 is gated by **Google Auth** (set `ALLOWED_EMAIL` in the page and the

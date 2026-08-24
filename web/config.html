@@ -12,6 +12,8 @@
   .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .row .lbl { width: 74px; font-size: 11px; font-weight: bold; }
   .row input { flex: 1; font-size: 14px; padding: 10px; border: 1px solid #999; font-family: inherit; }
+  .row .chk { display: flex; align-items: center; gap: 4px; font-size: 10px; letter-spacing: 1px; }
+  .row .chk input { width: 18px; height: 18px; margin: 0; }
   .row button { font-size: 14px; padding: 8px 12px; background: #000; color: #fff; border: none; }
   .save { font-size: 16px; padding: 14px 20px; background: #000; color: #fff; border: none; letter-spacing: 3px; margin-top: 24px; width: 100%; }
   .status { font-size: 11px; letter-spacing: 2px; color: #666; margin-top: 12px; }
@@ -43,6 +45,10 @@
     <div id="gallery"></div>
     <div class="row"><button onclick="addGal()">+ GALLERY ITEM</button></div>
 
+    <h2>BOOKS</h2>
+    <div id="books"></div>
+    <div class="row"><button onclick="addBook()">+ BOOK</button></div>
+
     <h2>NEWS</h2>
     <div class="row"><input id="news" placeholder="https://…/api/news"></div>
 
@@ -70,7 +76,9 @@ firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
 
 let cardUrls = ["", "", "", "", "", "", "", ""];
+let cardStatic = [false, false, false, false, false, false, false, false];
 let gallery = {};
+let books = {};
 
 function showEditor() {
   document.getElementById("auth").style.display = "none";
@@ -100,8 +108,14 @@ async function load() {
     const snap = await db.ref("config").once("value");
     const c = snap.val() || {};
     cardUrls = [];
-    for (let i = 0; i < 8; i++) cardUrls.push((c.card_urls && c.card_urls[String(i)]) || "");
+    cardStatic = [];
+    for (let i = 0; i < 8; i++) {
+      const v = (c.card_urls && c.card_urls[String(i)]) || "";
+      if (v && typeof v === "object") { cardUrls.push(v.url || ""); cardStatic.push(!!v.static); }
+      else { cardUrls.push(v); cardStatic.push(false); }
+    }
     gallery = c.gallery || {};
+    books = c.books || {};
     document.getElementById("news").value = c.news_url || "";
     document.getElementById("newsLink").href = c.news_url || "#";
   } catch (e) { /* defaults */ }
@@ -120,7 +134,34 @@ function render() {
     inp.placeholder = "https://…";
     inp.oninput = () => { cardUrls[i] = inp.value; };
     div.appendChild(inp);
+    const chk = document.createElement("label");
+    chk.className = "chk";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = cardStatic[i];
+    cb.onchange = () => { cardStatic[i] = cb.checked; };
+    chk.appendChild(cb);
+    chk.appendChild(document.createTextNode("STATIC"));
+    div.appendChild(chk);
     cards.appendChild(div);
+  });
+  const booksEl = document.getElementById("books");
+  booksEl.innerHTML = "";
+  Object.entries(books).forEach(([t, v]) => {
+    const div = document.createElement("div");
+    div.className = "row";
+    div.innerHTML = '<span class="lbl">' + t + '</span>';
+    const inp = document.createElement("input");
+    const url = (v && typeof v === "object") ? (v.url || "") : String(v);
+    inp.value = url;
+    inp.placeholder = "https://gutenberg.org/…";
+    inp.oninput = () => { books[t] = { url: inp.value }; };
+    const del = document.createElement("button");
+    del.textContent = "✕";
+    del.onclick = () => { delete books[t]; render(); };
+    div.appendChild(inp);
+    div.appendChild(del);
+    booksEl.appendChild(div);
   });
   const gal = document.getElementById("gallery");
   gal.innerHTML = "";
@@ -140,6 +181,15 @@ function render() {
   });
 }
 
+function addBook() {
+  let n = 1;
+  while (books["book" + n]) n++;
+  books["book" + n] = { url: "" };
+  render();
+  const inputs = document.getElementById("books").querySelectorAll("input");
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
 function addGal() {
   const keys = Object.keys(gallery).map(Number).filter((n) => !isNaN(n));
   const next = keys.length ? Math.max(...keys) + 1 : 1;
@@ -151,8 +201,9 @@ function addGal() {
 
 async function save() {
   const body = {
-    card_urls: Object.fromEntries(cardUrls.map((u, i) => [String(i), u])),
+    card_urls: Object.fromEntries(cardUrls.map((u, i) => [String(i), { url: u, static: cardStatic[i] }])),
     gallery,
+    books,
     news_url: document.getElementById("news").value,
   };
   try {

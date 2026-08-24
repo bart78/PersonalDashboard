@@ -67,11 +67,18 @@ const char *newsText = NULL;
 bool inNews = false;
 int newsPage = 0;
 char rtUrls[NUM_CARDS][256];
+bool rtStatic[NUM_CARDS] = {false, false, false, false, false, false, false, false};
 char rtGallery[8][256];
 char rtNews[256];
+#define MAX_CFG_BOOKS 4
+char rtBooksTitle[MAX_CFG_BOOKS][40];
+char rtBooksUrl[MAX_CFG_BOOKS][256];
+int bookConfigCount = 0;
 int galCount = 0;
 bool galMode = false;
 int galIdx = 0;
+bool bookModeList = false;
+int selBook = 0;
 bool todoMode = false;
 int todoSel = 0;
 int todoCount = 0;
@@ -324,6 +331,31 @@ void updateTodoRow(int i)
 
 void drawCardScreen()
 {
+    if (curCard == 5 && bookModeList && bookConfigCount > 0)
+    {
+        display.fillScreen(GxEPD_WHITE);
+        display.setFont(&FreeSans12pt7b);
+        display.setTextColor(GxEPD_BLACK);
+        display.setCursor(12, 30);
+        display.print("BOOKS");
+        display.drawLine(12, 42, 260, 42, GxEPD_BLACK);
+        for (int i = 0; i < bookConfigCount; i++)
+        {
+            int y = 70 + i * 30;
+            if (i == selBook)
+            {
+                display.fillRect(12, y - 18, 248, 26, GxEPD_BLACK);
+                display.setTextColor(GxEPD_WHITE);
+            }
+            else
+            {
+                display.setTextColor(GxEPD_BLACK);
+            }
+            display.setCursor(18, y);
+            display.print(rtBooksTitle[i]);
+        }
+        return;
+    }
     if (curCard == 5 && activeBook)
     {
         renderTextPage(activeBook, readerPage);
@@ -685,6 +717,28 @@ void syncPendingTodos()
     }
 }
 
+bool urlChanged(int slot, const char *url)
+{
+    Preferences p;
+    p.begin("crow", false);
+    char key[8];
+    snprintf(key, sizeof(key), "u%d", slot);
+    String last = p.getString(key, "");
+    bool changed = last != url;
+    p.end();
+    return changed;
+}
+
+void markFetched(int slot, const char *url)
+{
+    Preferences p;
+    p.begin("crow", false);
+    char key[8];
+    snprintf(key, sizeof(key), "u%d", slot);
+    p.putString(key, url);
+    p.end();
+}
+
 void fetchConfig()
 {
     HTTPClient http;
@@ -727,8 +781,37 @@ void fetchConfig()
             {
                 int i = atoi(kv.key().c_str());
                 if (i >= 0 && i < NUM_CARDS)
-                    snprintf(rtUrls[i], 256, "%s", kv.value().as<const char *>() ? kv.value().as<const char *>() : "");
+                {
+                    JsonVariant v = kv.value();
+                    if (v.is<JsonObject>())
+                    {
+                        snprintf(rtUrls[i], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+                        rtStatic[i] = v["static"] | false;
+                    }
+                    else
+                    {
+                        snprintf(rtUrls[i], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                        rtStatic[i] = false;
+                    }
+                }
             }
+        }
+    }
+    JsonVariant books = doc["books"];
+    bookConfigCount = 0;
+    if (!books.isNull() && books.is<JsonObject>())
+    {
+        for (JsonPair kv : books.as<JsonObject>())
+        {
+            if (bookConfigCount >= MAX_CFG_BOOKS)
+                break;
+            snprintf(rtBooksTitle[bookConfigCount], 40, "%s", kv.key().c_str());
+            JsonVariant v = kv.value();
+            if (v.is<JsonObject>())
+                snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+            else
+                snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+            bookConfigCount++;
         }
     }
     JsonVariant gal = doc["gallery"];
@@ -892,6 +975,11 @@ void syncAll()
         if (!rtUrls[i][0])
             continue;
         done++;
+        if (rtStatic[i] && !urlChanged(i, rtUrls[i]))
+        {
+            Serial.printf("Card %d static, unchanged\n", i + 1);
+            continue;
+        }
         showSyncModal("SYNCING", done, total);
         if (WiFi.status() != WL_CONNECTED)
         {
@@ -936,6 +1024,7 @@ void syncAll()
             {
                 Serial.printf("LS cache write %d FAILED\n", i + 1);
             }
+            markFetched(i, rtUrls[i]);
             Serial.printf("Card %d synced\n", i + 1);
         }
     }
@@ -1162,6 +1251,7 @@ void loop()
             inNews = false;
             todoMode = false;
             galMode = false;
+            bookModeList = false;
             screen = SCREEN_HOME;
             render();
         }
@@ -1200,6 +1290,12 @@ void loop()
             if (curCard == 5 && activeBook)
             {
                 activeBook = NULL;
+                screen = SCREEN_HOME;
+                render();
+            }
+            else if (curCard == 5 && bookModeList)
+            {
+                bookModeList = false;
                 screen = SCREEN_HOME;
                 render();
             }
@@ -1248,6 +1344,11 @@ void loop()
             bp.end();
             render();
         }
+        else if (screen == SCREEN_CARD && curCard == 5 && bookModeList && selBook > 0)
+        {
+            selBook--;
+            render();
+        }
         else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx > 0)
         {
             galIdx--;
@@ -1289,6 +1390,11 @@ void loop()
             bp.begin("crow", false);
             bp.putInt("bookPage", readerPage);
             bp.end();
+            render();
+        }
+        else if (screen == SCREEN_CARD && curCard == 5 && bookModeList && selBook < bookConfigCount - 1)
+        {
+            selBook++;
             render();
         }
         else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx < galCount - 1)
@@ -1358,7 +1464,13 @@ void loop()
             }
             else if (curCard == 5)
             {
-                if (openBook("/house.txt"))
+                if (bookConfigCount > 0)
+                {
+                    bookModeList = true;
+                    selBook = 0;
+                    Serial.printf("Books list: %d\n", bookConfigCount);
+                }
+                else if (openBook("/house.txt"))
                 {
                     Preferences bp;
                     bp.begin("crow", false);
