@@ -184,10 +184,13 @@ news) refresh on every sync. Books listed under `books` are fetched
 once, cached, and appear in the BOOKS tile's selector.
 
 Deploy `web/config.html` — a phone editor for all of it. The portal
-is gated by **Google Auth** (set `ALLOWED_EMAIL` in the page and the
-email in `database.rules.json` — `/config` writes require
-`auth.token.email` to match). The device *reads* `/config` publicly and
-never writes it, so it needs no credentials. The CARD tile becomes a
+is gated by **Google Auth** (set `ALLOWED_EMAIL` in the page; the
+RTDB rules must allow your email to write `/config`). The device
+*reads* `/config` publicly and never writes it, so it needs no
+credentials. Note: `firebase.json` deliberately has **no `database`
+section** — rules are managed in the Firebase console, never deployed
+from this repo (so a deploy can't clobber them); `database.rules.json`
+is kept as a reference copy. The CARD tile becomes a
 dial-scrolled gallery of the images under `gallery` (bizcards,
 travel/bus QR codes, coupons…), each cached in flash.
 
