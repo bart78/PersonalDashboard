@@ -160,7 +160,25 @@ firebase deploy --only hosting
 - `todo.html` — the phone editor for the todo list. Point it at your RTDB with `?db=https://YOUR-PROJECT-default-rtdb.firebaseio.com`.
 - The RTDB rules shipped in `cloud/database.rules.json`: public read, write only under `/todo`.
 
-### 4. Todos
+### 4. Remote configuration (optional but recommended)
+
+The device reads `/config` from the RTDB at every sync — card URLs,
+the CARD gallery, and the news endpoint all become remote-controlled.
+Compiled defaults in `config.h` are the offline fallback.
+
+```
+/config
+  "card_urls": { "0": "https://…/weather", "2": "https://…/calendar", … }
+  "gallery":   { "1": "https://…/bizcard", "2": "https://…/bus-qr" }
+  "news_url":  "https://…/api/news"
+```
+
+Deploy `web/config.html` alongside the todo app (`?db=` points at your
+RTDB) — a phone editor for all of it. The CARD tile becomes a
+dial-scrolled gallery of the images listed under `gallery` (bizcards,
+travel/bus QR codes, coupons…), each cached in flash.
+
+### 5. Todos
 
 RTDB structure (console-editable):
 

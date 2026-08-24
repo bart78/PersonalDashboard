@@ -66,6 +66,12 @@ const char *activeBook = NULL;
 const char *newsText = NULL;
 bool inNews = false;
 int newsPage = 0;
+char rtUrls[NUM_CARDS][256];
+char rtGallery[8][256];
+char rtNews[256];
+int galCount = 0;
+bool galMode = false;
+int galIdx = 0;
 bool todoMode = false;
 int todoSel = 0;
 int todoCount = 0;
@@ -328,6 +334,33 @@ void drawCardScreen()
         renderTextPage(newsText, readerPage);
         return;
     }
+    if (curCard == 6 && galMode)
+    {
+        char p[24];
+        snprintf(p, sizeof(p), "/gal_%02d.bin", galIdx + 1);
+        File gf = SPIFFS.open(p, "rb");
+        if (gf)
+        {
+            gf.read(pageBuf, PAGE_BYTES);
+            gf.close();
+            display.fillScreen(GxEPD_WHITE);
+            display.drawBitmap(0, 0, pageBuf, PAGE_W, PAGE_H, GxEPD_BLACK);
+        }
+        else
+        {
+            display.fillScreen(GxEPD_WHITE);
+            display.drawInvertedBitmap(0, 0, PLACEHOLDER, SCREEN_W, SCREEN_H, GxEPD_BLACK);
+        }
+        display.setFont(&FreeSans9pt7b);
+        display.setTextColor(GxEPD_BLACK);
+        char pos[16];
+        snprintf(pos, sizeof(pos), "%d / %d", galIdx + 1, galCount);
+        display.setCursor(220, 780);
+        display.print(pos);
+        display.setCursor(12, 780);
+        display.print("EXIT:BACK");
+        return;
+    }
     if (curCard == 7 && todoMode)
     {
         display.fillScreen(GxEPD_WHITE);
@@ -461,12 +494,12 @@ bool decodePage(const uint8_t *data, size_t len)
     return true;
 }
 
-bool fetchPage(int idx, uint8_t **outBuf, size_t *outLen)
+bool fetchPageUrl(int idx, const char *pageUrl, uint8_t **outBuf, size_t *outLen)
 {
     char url[1024];
     snprintf(url, sizeof(url),
              "%s/?url=%s&width=%d&height=%d&monochrome=true&dither=true",
-             SCREENSHOT_BASE, CARD_URLS[idx], PAGE_W, PAGE_H);
+             SCREENSHOT_BASE, pageUrl, PAGE_W, PAGE_H);
     HTTPClient http;
     if (!http.begin(url))
         return false;
@@ -652,6 +685,72 @@ void syncPendingTodos()
     }
 }
 
+void fetchConfig()
+{
+    HTTPClient http;
+    if (!http.begin(CONFIG_DB ".json"))
+        return;
+    http.setTimeout(15000);
+    int code = http.GET();
+    if (code != 200)
+    {
+        http.end();
+        return;
+    }
+    String body = http.getString();
+    http.end();
+    DynamicJsonDocument doc(8192);
+    DeserializationError err = deserializeJson(doc, body);
+    if (err)
+    {
+        Serial.println("Config parse failed");
+        return;
+    }
+    JsonVariant cu = doc["card_urls"];
+    if (!cu.isNull())
+    {
+        for (int i = 0; i < NUM_CARDS; i++)
+            rtUrls[i][0] = 0;
+        if (cu.is<JsonArray>())
+        {
+            int i = 0;
+            for (JsonVariant v : cu.as<JsonArray>())
+            {
+                if (!v.isNull() && i < NUM_CARDS)
+                    snprintf(rtUrls[i], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                i++;
+            }
+        }
+        else if (cu.is<JsonObject>())
+        {
+            for (JsonPair kv : cu.as<JsonObject>())
+            {
+                int i = atoi(kv.key().c_str());
+                if (i >= 0 && i < NUM_CARDS)
+                    snprintf(rtUrls[i], 256, "%s", kv.value().as<const char *>() ? kv.value().as<const char *>() : "");
+            }
+        }
+    }
+    JsonVariant gal = doc["gallery"];
+    galCount = 0;
+    if (!gal.isNull() && gal.is<JsonObject>())
+    {
+        for (JsonPair kv : gal.as<JsonObject>())
+        {
+            if (galCount < 8)
+                snprintf(rtGallery[galCount++], 256, "%s", kv.value().as<const char *>() ? kv.value().as<const char *>() : "");
+        }
+    }
+    const char *nu = doc["news_url"] | "";
+    if (nu && nu[0])
+        snprintf(rtNews, 256, "%s", nu);
+    int nCards = 0;
+    for (int i = 0; i < NUM_CARDS; i++)
+        if (rtUrls[i][0])
+            nCards++;
+    Serial.printf("Config loaded: %d cards, %d gallery\n", nCards, galCount);
+}
+
 bool parseTodoBody(const String &body)
 {
     DynamicJsonDocument doc(4096);
@@ -771,10 +870,14 @@ void showSyncModal(const char *msg, int cur, int total)
 void syncAll()
 {
     syncPendingTodos();
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        fetchConfig();
+    }
     int total = 0;
     for (int i = 0; i < NUM_CARDS; i++)
     {
-        if (CARD_URLS[i][0])
+        if (rtUrls[i][0])
             total++;
     }
     if (total == 0)
@@ -786,7 +889,7 @@ void syncAll()
     int done = 0;
     for (int i = 0; i < NUM_CARDS; i++)
     {
-        if (!CARD_URLS[i][0])
+        if (!rtUrls[i][0])
             continue;
         done++;
         showSyncModal("SYNCING", done, total);
@@ -809,7 +912,7 @@ void syncAll()
         }
         uint8_t *pngData = NULL;
         size_t pngLen = 0;
-        if (!fetchPage(i, &pngData, &pngLen))
+        if (!fetchPageUrl(i, rtUrls[i], &pngData, &pngLen))
         {
             showSyncModal("FAILED", done, total);
             delay(800);
@@ -872,6 +975,12 @@ void setup()
 
     pageBuf = (uint8_t *)malloc(PAGE_BYTES);
 
+    for (int i = 0; i < NUM_CARDS; i++)
+    {
+        snprintf(rtUrls[i], 256, "%s", CARD_URLS[i]);
+    }
+    snprintf(rtNews, 256, "%s", NEWS_URL);
+
     bool lsOk = SPIFFS.begin(true);
     Serial.printf("SPIFFS: %s\n", lsOk ? "ok" : "FAIL");
 
@@ -899,6 +1008,19 @@ void setup()
             pageReady[i] = true;
             Serial.printf("Cached page: %d\n", i + 1);
         }
+    }
+    for (int g = 1; g <= 8; g++)
+    {
+        char p[24];
+        snprintf(p, sizeof(p), "/gal_%02d.bin", g);
+        if (SPIFFS.exists(p))
+        {
+            galCount = g;
+        }
+    }
+    if (galCount > 0)
+    {
+        Serial.printf("Gallery cache: %d items\n", galCount);
     }
 
     Preferences tprefs;
@@ -1039,6 +1161,7 @@ void loop()
             activeBook = NULL;
             inNews = false;
             todoMode = false;
+            galMode = false;
             screen = SCREEN_HOME;
             render();
         }
@@ -1077,6 +1200,12 @@ void loop()
             if (curCard == 5 && activeBook)
             {
                 activeBook = NULL;
+                screen = SCREEN_HOME;
+                render();
+            }
+            else if (curCard == 6 && galMode)
+            {
+                galMode = false;
                 screen = SCREEN_HOME;
                 render();
             }
@@ -1119,6 +1248,15 @@ void loop()
             bp.end();
             render();
         }
+        else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx > 0)
+        {
+            galIdx--;
+            Preferences gp;
+            gp.begin("crow", false);
+            gp.putInt("galIdx", galIdx);
+            gp.end();
+            render();
+        }
         else if (screen == SCREEN_CARD && curCard == 7 && todoMode && todoSel > 0)
         {
             int old = todoSel;
@@ -1153,6 +1291,15 @@ void loop()
             bp.end();
             render();
         }
+        else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx < galCount - 1)
+        {
+            galIdx++;
+            Preferences gp;
+            gp.begin("crow", false);
+            gp.putInt("galIdx", galIdx);
+            gp.end();
+            render();
+        }
         else if (screen == SCREEN_CARD && curCard == 7 && todoMode && todoSel < todoCount - 1)
         {
             int old = todoSel;
@@ -1175,7 +1322,18 @@ void loop()
         {
             curCard = sel;
             screen = SCREEN_CARD;
-            if (curCard == 7)
+            if (curCard == 6 && galCount > 0)
+            {
+                Preferences gp;
+                gp.begin("crow", false);
+                galIdx = gp.getInt("galIdx", 0);
+                gp.end();
+                if (galIdx >= galCount)
+                    galIdx = 0;
+                galMode = true;
+                Serial.printf("Gallery open: %d items\n", galCount);
+            }
+            else if (curCard == 7)
             {
                 todoMode = false;
                 if (WiFi.status() == WL_CONNECTED)

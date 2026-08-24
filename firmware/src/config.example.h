@@ -26,3 +26,5 @@ const char *CARD_URLS[8] = {
 
 #define NEWS_URL "https://YOUR-NEWS-TEXT-ENDPOINT"
 #define TODO_DB "https://YOUR-PROJECT-default-rtdb.firebaseio.com/todo"
+
+#define CONFIG_DB "https://YOUR-PROJECT-default-rtdb.firebaseio.com/config"

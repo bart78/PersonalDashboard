@@ -3,6 +3,9 @@
     ".read": true,
     "todo": {
       ".write": true
+    },
+    "config": {
+      ".write": true
     }
   }
 }

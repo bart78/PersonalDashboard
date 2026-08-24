@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CONFIG</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 20px; letter-spacing: 4px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; }
+  h2 { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; margin: 22px 0 10px; }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .row .lbl { width: 26px; font-size: 13px; font-weight: bold; }
+  .row input { flex: 1; font-size: 14px; padding: 10px; border: 1px solid #999; font-family: inherit; }
+  .row button { font-size: 14px; padding: 8px 12px; background: #000; color: #fff; border: none; }
+  .addrow button { font-size: 14px; padding: 10px 16px; background: #000; color: #fff; border: none; letter-spacing: 2px; }
+  .save { font-size: 16px; padding: 14px 20px; background: #000; color: #fff; border: none; letter-spacing: 3px; margin-top: 24px; width: 100%; }
+  .status { font-size: 11px; letter-spacing: 2px; color: #666; margin-top: 12px; }
+</style>
+</head>
+<body>
+  <h1>CONFIG</h1>
+
+  <h2>CARDS</h2>
+  <div id="cards"></div>
+
+  <h2>CARD GALLERY</h2>
+  <div id="gallery"></div>
+  <div class="addrow"><button onclick="addGal()">+ GALLERY</button></div>
+
+  <h2>NEWS</h2>
+  <div class="row"><input id="news" placeholder="https://…/api/news"></div>
+
+  <button class="save" onclick="save()">SAVE</button>
+  <div class="status" id="status"></div>
+
+<script>
+const BASE = new URLSearchParams(location.search).get("db") || "REPLACE_WITH_YOUR_RTDB_URL";
+const CARD_NAMES = ["WEATHER", "NAV", "CALENDAR", "NEWS", "STOCKS", "BOOKS", "CARD", "TODO"];
+
+let cardUrls = ["", "", "", "", "", "", "", ""];
+let gallery = {};
+
+async function load() {
+  try {
+    const r = await fetch(BASE + "/config.json");
+    const c = await r.json();
+    cardUrls = [];
+    for (let i = 0; i < 8; i++) cardUrls.push((c && c.card_urls && c.card_urls[String(i)]) || "");
+    gallery = (c && c.gallery) || {};
+    document.getElementById("news").value = (c && c.news_url) || "";
+  } catch (e) { /* defaults */ }
+  render();
+}
+
+function render() {
+  const cards = document.getElementById("cards");
+  cards.innerHTML = "";
+  cardUrls.forEach((u, i) => {
+    const div = document.createElement("div");
+    div.className = "row";
+    div.innerHTML = '<span class="lbl">' + CARD_NAMES[i] + '</span>';
+    const inp = document.createElement("input");
+    inp.value = u;
+    inp.placeholder = "https://…";
+    inp.oninput = () => { cardUrls[i] = inp.value; };
+    div.appendChild(inp);
+    cards.appendChild(div);
+  });
+  const gal = document.getElementById("gallery");
+  gal.innerHTML = "";
+  Object.entries(gallery).forEach(([k, v]) => {
+    const div = document.createElement("div");
+    div.className = "row";
+    div.innerHTML = '<span class="lbl">' + k + '</span>';
+    const inp = document.createElement("input");
+    inp.value = v;
+    inp.oninput = () => { gallery[k] = inp.value; };
+    const del = document.createElement("button");
+    del.textContent = "\u2715";
+    del.onclick = () => { delete gallery[k]; render(); };
+    div.appendChild(inp);
+    div.appendChild(del);
+    gal.appendChild(div);
+  });
+}
+
+function addGal() {
+  const keys = Object.keys(gallery).map(Number).filter((n) => !isNaN(n));
+  const next = keys.length ? Math.max(...keys) + 1 : 1;
+  gallery[String(next)] = "";
+  render();
+  const inputs = document.getElementById("gallery").querySelectorAll("input");
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+async function save() {
+  const body = {
+    card_urls: Object.fromEntries(cardUrls.map((u, i) => [String(i), u])),
+    gallery,
+    news_url: document.getElementById("news").value,
+  };
+  try {
+    await fetch(BASE + "/config.json", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    document.getElementById("status").textContent = "SAVED — device picks up on next sync";
+  } catch (e) {
+    document.getElementById("status").textContent = "SAVE FAILED";
+  }
+}
+
+load();
+</script>
+</body>
+</html>
