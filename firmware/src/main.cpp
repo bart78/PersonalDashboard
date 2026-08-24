@@ -79,6 +79,39 @@ bool galMode = false;
 int galIdx = 0;
 bool bookModeList = false;
 int selBook = 0;
+const char *activeBookUrl = NULL;
+
+uint32_t bookKeyHash(const char *s)
+{
+    uint32_t h = 2166136261u;
+    while (*s)
+    {
+        h ^= (uint8_t)*s++;
+        h *= 16777619u;
+    }
+    return h;
+}
+
+void saveBookPage()
+{
+    Preferences bp;
+    bp.begin("crow", false);
+    char key[16];
+    snprintf(key, sizeof(key), "bp%08x", bookKeyHash(activeBookUrl ? activeBookUrl : "/house.txt"));
+    bp.putInt(key, readerPage);
+    bp.end();
+}
+
+int loadBookPage()
+{
+    Preferences bp;
+    bp.begin("crow", false);
+    char key[16];
+    snprintf(key, sizeof(key), "bp%08x", bookKeyHash(activeBookUrl ? activeBookUrl : "/house.txt"));
+    int p = bp.getInt(key, 0);
+    bp.end();
+    return p;
+}
 bool todoMode = false;
 int todoSel = 0;
 int todoCount = 0;
@@ -1359,10 +1392,7 @@ void loop()
         else if (screen == SCREEN_CARD && curCard == 5 && activeBook && readerPage > 0)
         {
             readerPage--;
-            Preferences bp;
-            bp.begin("crow", false);
-            bp.putInt("bookPage", readerPage);
-            bp.end();
+            saveBookPage();
             render();
         }
         else if (screen == SCREEN_CARD && curCard == 5 && bookModeList && selBook > 0)
@@ -1407,10 +1437,7 @@ void loop()
         else if (screen == SCREEN_CARD && curCard == 5 && activeBook && readerPage < pageCount - 1)
         {
             readerPage++;
-            Preferences bp;
-            bp.begin("crow", false);
-            bp.putInt("bookPage", readerPage);
-            bp.end();
+            saveBookPage();
             render();
         }
         else if (screen == SCREEN_CARD && curCard == 5 && bookModeList && selBook < bookConfigCount - 1)
@@ -1493,10 +1520,8 @@ void loop()
                 }
                 else if (openBook("/house.txt"))
                 {
-                    Preferences bp;
-                    bp.begin("crow", false);
-                    readerPage = bp.getInt("bookPage", 0);
-                    bp.end();
+                    activeBookUrl = NULL;
+                    readerPage = loadBookPage();
                     if (readerPage >= pageCount)
                         readerPage = 0;
                     Serial.printf("Book open: %d pages, at %d\n", pageCount, readerPage + 1);
@@ -1535,6 +1560,40 @@ void loop()
                 {
                     Serial.println("News unavailable");
                 }
+            }
+            render();
+        }
+        else if (screen == SCREEN_CARD && curCard == 5 && bookModeList)
+        {
+            char path[32];
+            snprintf(path, sizeof(path), "/book_%d.txt", selBook + 1);
+            if (WiFi.status() == WL_CONNECTED)
+            {
+                char *fresh = fetchText(rtBooksUrl[selBook]);
+                if (fresh)
+                {
+                    stripCdata(fresh);
+                    File nf = SPIFFS.open(path, "w");
+                    if (nf)
+                    {
+                        nf.write((const uint8_t *)fresh, strlen(fresh));
+                        nf.close();
+                    }
+                    free((void *)fresh);
+                }
+            }
+            if (openBook(path))
+            {
+                activeBookUrl = rtBooksUrl[selBook];
+                readerPage = loadBookPage();
+                if (readerPage >= pageCount)
+                    readerPage = 0;
+                bookModeList = false;
+                Serial.printf("Book open: %s (%d pages, at %d)\n", rtBooksTitle[selBook], pageCount, readerPage + 1);
+            }
+            else
+            {
+                Serial.println("Book unavailable");
             }
             render();
         }
