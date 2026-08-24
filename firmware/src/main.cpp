@@ -640,7 +640,7 @@ char *fetchText(const char *url)
         if (got + 4096 > cap)
         {
             size_t newCap = cap * 2;
-            if (newCap > 256 * 1024)
+            if (newCap > 1024 * 1024)
             {
                 free(buf);
                 http.end();
@@ -865,35 +865,75 @@ void fetchConfig()
     }
     JsonVariant books = doc["books"];
     bookConfigCount = 0;
-    if (!books.isNull() && books.is<JsonObject>())
+    if (!books.isNull())
     {
-        for (JsonPair kv : books.as<JsonObject>())
+        if (books.is<JsonArray>())
         {
-            if (bookConfigCount >= MAX_CFG_BOOKS)
-                break;
-            JsonVariant v = kv.value();
-            if (v.is<JsonObject>())
+            int slot = 0;
+            for (JsonVariant v : books.as<JsonArray>())
             {
-                const char *t = v["title"] | "";
-                snprintf(rtBooksTitle[bookConfigCount], 40, "%s", (t && t[0]) ? t : kv.key().c_str());
-                snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+                if (bookConfigCount >= MAX_CFG_BOOKS)
+                    break;
+                if (v.isNull())
+                    continue;
+                char keyBuf[8];
+                snprintf(keyBuf, sizeof(keyBuf), "%d", slot + 1);
+                if (v.is<JsonObject>())
+                {
+                    const char *t = v["title"] | "";
+                    snprintf(rtBooksTitle[bookConfigCount], 40, "%s", (t && t[0]) ? t : keyBuf);
+                    snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+                }
+                else
+                {
+                    snprintf(rtBooksTitle[bookConfigCount], 40, "%s", keyBuf);
+                    snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                }
+                bookConfigCount++;
+                slot++;
             }
-            else
+        }
+        else if (books.is<JsonObject>())
+        {
+            for (JsonPair kv : books.as<JsonObject>())
             {
-                snprintf(rtBooksTitle[bookConfigCount], 40, "%s", kv.key().c_str());
-                snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                if (bookConfigCount >= MAX_CFG_BOOKS)
+                    break;
+                JsonVariant v = kv.value();
+                if (v.is<JsonObject>())
+                {
+                    const char *t = v["title"] | "";
+                    snprintf(rtBooksTitle[bookConfigCount], 40, "%s", (t && t[0]) ? t : kv.key().c_str());
+                    snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+                }
+                else
+                {
+                    snprintf(rtBooksTitle[bookConfigCount], 40, "%s", kv.key().c_str());
+                    snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+                }
+                bookConfigCount++;
             }
-            bookConfigCount++;
         }
     }
     JsonVariant gal = doc["gallery"];
     galCount = 0;
-    if (!gal.isNull() && gal.is<JsonObject>())
+    if (!gal.isNull())
     {
-        for (JsonPair kv : gal.as<JsonObject>())
+        if (gal.is<JsonArray>())
         {
-            if (galCount < 8)
-                snprintf(rtGallery[galCount++], 256, "%s", kv.value().as<const char *>() ? kv.value().as<const char *>() : "");
+            for (JsonVariant v : gal.as<JsonArray>())
+            {
+                if (galCount < 8 && !v.isNull())
+                    snprintf(rtGallery[galCount++], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+            }
+        }
+        else if (gal.is<JsonObject>())
+        {
+            for (JsonPair kv : gal.as<JsonObject>())
+            {
+                if (galCount < 8)
+                    snprintf(rtGallery[galCount++], 256, "%s", kv.value().as<const char *>() ? kv.value().as<const char *>() : "");
+            }
         }
     }
     const char *nu = doc["news_url"] | "";
@@ -905,7 +945,7 @@ void fetchConfig()
     for (int i = 0; i < NUM_CARDS; i++)
         if (rtUrls[i][0])
             nCards++;
-    Serial.printf("Config loaded: %d cards, %d gallery\n", nCards, galCount);
+    Serial.printf("Config loaded: %d cards, %d gallery, %d books\n", nCards, galCount, bookConfigCount);
 }
 
 bool parseTodoBody(const String &body)
