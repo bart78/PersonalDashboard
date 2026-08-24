@@ -146,19 +146,25 @@ function render() {
   });
   const booksEl = document.getElementById("books");
   booksEl.innerHTML = "";
-  Object.entries(books).forEach(([t, v]) => {
+  Object.entries(books).forEach(([k, v]) => {
     const div = document.createElement("div");
     div.className = "row";
-    div.innerHTML = '<span class="lbl">' + t + '</span>';
-    const inp = document.createElement("input");
+    div.innerHTML = '<span class="lbl">BOOK</span>';
+    const tinp = document.createElement("input");
     const url = (v && typeof v === "object") ? (v.url || "") : String(v);
-    inp.value = url;
-    inp.placeholder = "https://gutenberg.org/…";
-    inp.oninput = () => { books[t] = { url: inp.value }; };
+    const title = (v && typeof v === "object" && v.title) ? v.title : k;
+    tinp.value = title;
+    tinp.placeholder = "Title";
+    tinp.oninput = () => { books[k] = { title: tinp.value, url: urlInp.value }; };
+    const urlInp = document.createElement("input");
+    urlInp.value = url;
+    urlInp.placeholder = "https://gutenberg.org/…";
+    urlInp.oninput = () => { books[k] = { title: tinp.value, url: urlInp.value }; };
     const del = document.createElement("button");
     del.textContent = "✕";
-    del.onclick = () => { delete books[t]; render(); };
-    div.appendChild(inp);
+    del.onclick = () => { delete books[k]; render(); };
+    div.appendChild(tinp);
+    div.appendChild(urlInp);
     div.appendChild(del);
     booksEl.appendChild(div);
   });
@@ -182,8 +188,8 @@ function render() {
 
 function addBook() {
   let n = 1;
-  while (books["book" + n]) n++;
-  books["book" + n] = { url: "" };
+  while (books[String(n)]) n++;
+  books[String(n)] = { title: "", url: "" };
   render();
   const inputs = document.getElementById("books").querySelectorAll("input");
   if (inputs.length) inputs[inputs.length - 1].focus();

@@ -816,12 +816,18 @@ void fetchConfig()
         {
             if (bookConfigCount >= MAX_CFG_BOOKS)
                 break;
-            snprintf(rtBooksTitle[bookConfigCount], 40, "%s", kv.key().c_str());
             JsonVariant v = kv.value();
             if (v.is<JsonObject>())
+            {
+                const char *t = v["title"] | "";
+                snprintf(rtBooksTitle[bookConfigCount], 40, "%s", (t && t[0]) ? t : kv.key().c_str());
                 snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v["url"].as<const char *>() ? v["url"].as<const char *>() : "");
+            }
             else
+            {
+                snprintf(rtBooksTitle[bookConfigCount], 40, "%s", kv.key().c_str());
                 snprintf(rtBooksUrl[bookConfigCount], 256, "%s", v.as<const char *>() ? v.as<const char *>() : "");
+            }
             bookConfigCount++;
         }
     }
