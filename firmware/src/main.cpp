@@ -827,6 +827,8 @@ void fetchConfig()
     const char *nu = doc["news_url"] | "";
     if (nu && nu[0])
         snprintf(rtNews, 256, "%s", nu);
+    if (rtUrls[3][0])
+        snprintf(rtNews, 256, "%s", rtUrls[3]);
     int nCards = 0;
     for (int i = 0; i < NUM_CARDS; i++)
         if (rtUrls[i][0])
@@ -973,6 +975,8 @@ void syncAll()
     for (int i = 0; i < NUM_CARDS; i++)
     {
         if (!rtUrls[i][0])
+            continue;
+        if (i == 3 || i == 5)
             continue;
         done++;
         if (rtStatic[i] && !urlChanged(i, rtUrls[i]))

@@ -29,7 +29,6 @@
   <h1>CONFIG</h1>
   <div class="toplinks">
     <a href="todo.html">TODO LIST</a>
-    <a id="newsLink" href="#" target="_blank" rel="noopener">NEWS</a>
   </div>
 
   <div class="auth" id="auth">
@@ -48,9 +47,6 @@
     <h2>BOOKS</h2>
     <div id="books"></div>
     <div class="row"><button onclick="addBook()">+ BOOK</button></div>
-
-    <h2>NEWS</h2>
-    <div class="row"><input id="news" placeholder="https://…/api/news"></div>
 
     <button class="save" onclick="save()">SAVE</button>
     <div class="status" id="status"></div>
@@ -114,10 +110,9 @@ async function load() {
       if (v && typeof v === "object") { cardUrls.push(v.url || ""); cardStatic.push(!!v.static); }
       else { cardUrls.push(v); cardStatic.push(false); }
     }
+    if (c.news_url && !cardUrls[3]) cardUrls[3] = c.news_url;
     gallery = c.gallery || {};
     books = c.books || {};
-    document.getElementById("news").value = c.news_url || "";
-    document.getElementById("newsLink").href = c.news_url || "#";
   } catch (e) { /* defaults */ }
   render();
 }
@@ -125,7 +120,9 @@ async function load() {
 function render() {
   const cards = document.getElementById("cards");
   cards.innerHTML = "";
-  cardUrls.forEach((u, i) => {
+  const ROW_ORDER = [0, 1, 2, 3, 4, 6, 7];
+  ROW_ORDER.forEach((i) => {
+    const u = cardUrls[i];
     const div = document.createElement("div");
     div.className = "row";
     div.innerHTML = '<span class="lbl">' + CARD_NAMES[i] + '</span>';
@@ -134,15 +131,17 @@ function render() {
     inp.placeholder = "https://…";
     inp.oninput = () => { cardUrls[i] = inp.value; };
     div.appendChild(inp);
-    const chk = document.createElement("label");
-    chk.className = "chk";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = cardStatic[i];
-    cb.onchange = () => { cardStatic[i] = cb.checked; };
-    chk.appendChild(cb);
-    chk.appendChild(document.createTextNode("STATIC"));
-    div.appendChild(chk);
+    if (i !== 7) {
+      const chk = document.createElement("label");
+      chk.className = "chk";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = cardStatic[i];
+      cb.onchange = () => { cardStatic[i] = cb.checked; };
+      chk.appendChild(cb);
+      chk.appendChild(document.createTextNode("STATIC"));
+      div.appendChild(chk);
+    }
     cards.appendChild(div);
   });
   const booksEl = document.getElementById("books");
@@ -200,11 +199,11 @@ function addGal() {
 }
 
 async function save() {
+  const ROW_ORDER = [0, 1, 2, 3, 4, 6, 7];
   const body = {
-    card_urls: Object.fromEntries(cardUrls.map((u, i) => [String(i), { url: u, static: cardStatic[i] }])),
+    card_urls: Object.fromEntries(ROW_ORDER.map((i) => [String(i), { url: cardUrls[i], static: cardStatic[i] }])),
     gallery,
     books,
-    news_url: document.getElementById("news").value,
   };
   try {
     await db.ref("config").set(body);
