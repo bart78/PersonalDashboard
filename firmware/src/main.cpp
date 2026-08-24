@@ -21,6 +21,8 @@
 #include "book_text.h"
 
 #define PIN_SCREEN_PWR 7
+#define BATTERY_PIN -1
+#define BATTERY_DIVIDER 2.0f
 #define PIN_HOME 2
 #define PIN_EXIT 1
 #define PIN_PRV 6
@@ -90,6 +92,19 @@ uint32_t bookKeyHash(const char *s)
         h *= 16777619u;
     }
     return h;
+}
+
+int readBatteryPct()
+{
+    if (BATTERY_PIN < 0)
+        return -1;
+    uint32_t mv = analogReadMilliVolts(BATTERY_PIN);
+    float v = mv * BATTERY_DIVIDER / 1000.0f;
+    if (v > 4.2f)
+        v = 4.2f;
+    if (v < 3.2f)
+        return 0;
+    return (int)((v - 3.2f) / 1.0f * 100.0f);
 }
 
 void saveBookPage()
@@ -175,6 +190,15 @@ void drawHomeOverlays()
     display.setTextColor(GxEPD_BLACK);
     display.setCursor(12, 96);
     display.print(dateStr);
+    int bat = readBatteryPct();
+    if (bat >= 0)
+    {
+        display.drawRect(236, 86, 24, 12, GxEPD_BLACK);
+        display.fillRect(260, 89, 3, 6, GxEPD_BLACK);
+        int segs = (bat + 12) / 25;
+        if (segs > 0)
+            display.fillRect(238, 88, 20 * segs / 4, 8, GxEPD_BLACK);
+    }
     if (sdBootOk)
     {
         display.setCursor(150, 636);
@@ -502,13 +526,14 @@ void render()
 void sleepNow()
 {
     Serial.println("Sleeping");
-    WiFi.disconnect();
-    WiFi.mode(WIFI_OFF);
     SD.end();
     esp_sleep_enable_ext1_wakeup(
         (1ULL << PIN_HOME) | (1ULL << PIN_EXIT) | (1ULL << PIN_PRV) | (1ULL << PIN_NEXT) | (1ULL << PIN_OK),
         ESP_EXT1_WAKEUP_ANY_LOW);
-    esp_deep_sleep_start();
+    esp_light_sleep_start();
+    Serial.println("Woken");
+    if (WiFi.status() != WL_CONNECTED)
+        WiFi.reconnect();
 }
 
 bool sdInit(void)
@@ -1306,7 +1331,7 @@ void setup()
     digitalWrite(PIN_SCREEN_PWR, HIGH);
     for (int i = 0; i < 5; i++)
     {
-        pinMode(BTN_PINS[i], INPUT);
+        pinMode(BTN_PINS[i], INPUT_PULLUP);
     }
 
     pageBuf = (uint8_t *)malloc(PAGE_BYTES);
