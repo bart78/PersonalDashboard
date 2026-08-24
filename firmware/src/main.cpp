@@ -428,14 +428,6 @@ void drawCardScreen()
             display.fillScreen(GxEPD_WHITE);
             display.drawInvertedBitmap(0, 0, PLACEHOLDER, SCREEN_W, SCREEN_H, GxEPD_BLACK);
         }
-        display.setFont(&FreeSans9pt7b);
-        display.setTextColor(GxEPD_BLACK);
-        char pos[16];
-        snprintf(pos, sizeof(pos), "%d / %d", galIdx + 1, galCount);
-        display.setCursor(220, 780);
-        display.print(pos);
-        display.setCursor(12, 780);
-        display.print("EXIT:BACK");
         return;
     }
     if (curCard == 7 && todoMode)
@@ -1169,11 +1161,6 @@ void syncAll()
         showSyncModal("SYNCING", done, total);
         char path[32];
         snprintf(path, sizeof(path), "/gal_%02d.bin", g + 1);
-        if (!urlChanged(100 + g, rtGallery[g]) && SPIFFS.exists(path))
-        {
-            Serial.printf("Gallery %d unchanged\n", g + 1);
-            continue;
-        }
         uint8_t *pngData = NULL;
         size_t pngLen = 0;
         if (!fetchPageUrl(100 + g, rtGallery[g], &pngData, &pngLen))
@@ -1192,7 +1179,6 @@ void syncAll()
             {
                 gf.write(pageBuf, PAGE_BYTES);
                 gf.close();
-                markFetched(100 + g, rtGallery[g]);
                 Serial.printf("Gallery %d synced\n", g + 1);
             }
             else
