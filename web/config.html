@@ -10,45 +10,93 @@
   h1 { font-size: 20px; letter-spacing: 4px; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; }
   h2 { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; margin: 22px 0 10px; }
   .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .row .lbl { width: 26px; font-size: 13px; font-weight: bold; }
+  .row .lbl { width: 74px; font-size: 11px; font-weight: bold; }
   .row input { flex: 1; font-size: 14px; padding: 10px; border: 1px solid #999; font-family: inherit; }
   .row button { font-size: 14px; padding: 8px 12px; background: #000; color: #fff; border: none; }
-  .addrow button { font-size: 14px; padding: 10px 16px; background: #000; color: #fff; border: none; letter-spacing: 2px; }
   .save { font-size: 16px; padding: 14px 20px; background: #000; color: #fff; border: none; letter-spacing: 3px; margin-top: 24px; width: 100%; }
   .status { font-size: 11px; letter-spacing: 2px; color: #666; margin-top: 12px; }
+  .auth { text-align: center; margin-top: 60px; }
+  .auth button { font-size: 16px; padding: 14px 24px; background: #000; color: #fff; border: none; letter-spacing: 2px; }
+  .auth .who { font-size: 12px; margin-top: 12px; color: #666; letter-spacing: 1px; }
+  #main { display: none; }
 </style>
 </head>
 <body>
   <h1>CONFIG</h1>
 
-  <h2>CARDS</h2>
-  <div id="cards"></div>
+  <div class="auth" id="auth">
+    <button onclick="signIn()">SIGN IN WITH GOOGLE</button>
+    <div class="who">Restricted to bart78@gmail.com</div>
+  </div>
 
-  <h2>CARD GALLERY</h2>
-  <div id="gallery"></div>
-  <div class="addrow"><button onclick="addGal()">+ GALLERY</button></div>
+  <div id="main">
+    <h2>CARDS</h2>
+    <div id="cards"></div>
 
-  <h2>NEWS</h2>
-  <div class="row"><input id="news" placeholder="https://…/api/news"></div>
+    <h2>CARD GALLERY</h2>
+    <div id="gallery"></div>
+    <div class="row"><button onclick="addGal()">+ GALLERY ITEM</button></div>
 
-  <button class="save" onclick="save()">SAVE</button>
-  <div class="status" id="status"></div>
+    <h2>NEWS</h2>
+    <div class="row"><input id="news" placeholder="https://…/api/news"></div>
 
+    <button class="save" onclick="save()">SAVE</button>
+    <div class="status" id="status"></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
-const BASE = new URLSearchParams(location.search).get("db") || "REPLACE_WITH_YOUR_RTDB_URL";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBGOR49t5alnHu0plhyRRud2ibC9_Qeex0",
+  authDomain: "crow-c66ca.firebaseapp.com",
+  databaseURL: "https://crow-c66ca-default-rtdb.firebaseio.com",
+  projectId: "crow-c66ca",
+  storageBucket: "crow-c66ca.firebasestorage.app",
+  messagingSenderId: "957271416152",
+  appId: "1:957271416152:web:5c3618ab93b9a34a9e592d"
+};
+const ALLOWED_EMAIL = "bart78@gmail.com";
 const CARD_NAMES = ["WEATHER", "NAV", "CALENDAR", "NEWS", "STOCKS", "BOOKS", "CARD", "TODO"];
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
 
 let cardUrls = ["", "", "", "", "", "", "", ""];
 let gallery = {};
 
+function showEditor() {
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("main").style.display = "block";
+  load();
+}
+
+function signIn() {
+  firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .then(() => firebase.auth().onAuthStateChanged(checkUser))
+    .catch((e) => alert("Sign-in failed: " + e.message));
+}
+
+function checkUser(user) {
+  if (user && user.email === ALLOWED_EMAIL) {
+    showEditor();
+  } else if (user) {
+    firebase.auth().signOut();
+    document.querySelector(".auth .who").textContent = "ACCESS DENIED — not " + ALLOWED_EMAIL;
+  }
+}
+
+firebase.auth().onAuthStateChanged(checkUser);
+
 async function load() {
   try {
-    const r = await fetch(BASE + "/config.json");
-    const c = await r.json();
+    const snap = await db.ref("config").once("value");
+    const c = snap.val() || {};
     cardUrls = [];
-    for (let i = 0; i < 8; i++) cardUrls.push((c && c.card_urls && c.card_urls[String(i)]) || "");
-    gallery = (c && c.gallery) || {};
-    document.getElementById("news").value = (c && c.news_url) || "";
+    for (let i = 0; i < 8; i++) cardUrls.push((c.card_urls && c.card_urls[String(i)]) || "");
+    gallery = c.gallery || {};
+    document.getElementById("news").value = c.news_url || "";
   } catch (e) { /* defaults */ }
   render();
 }
@@ -101,18 +149,12 @@ async function save() {
     news_url: document.getElementById("news").value,
   };
   try {
-    await fetch(BASE + "/config.json", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    await db.ref("config").set(body);
     document.getElementById("status").textContent = "SAVED — device picks up on next sync";
   } catch (e) {
-    document.getElementById("status").textContent = "SAVE FAILED";
+    document.getElementById("status").textContent = "SAVE FAILED: " + e.message;
   }
 }
-
-load();
 </script>
 </body>
 </html>

@@ -5,7 +5,7 @@
       ".write": true
     },
     "config": {
-      ".write": true
+      ".write": "auth != null && auth.token.email == 'YOUR_EMAIL@gmail.com'"
     }
   }
 }

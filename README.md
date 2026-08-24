@@ -173,9 +173,12 @@ Compiled defaults in `config.h` are the offline fallback.
   "news_url":  "https://…/api/news"
 ```
 
-Deploy `web/config.html` alongside the todo app (`?db=` points at your
-RTDB) — a phone editor for all of it. The CARD tile becomes a
-dial-scrolled gallery of the images listed under `gallery` (bizcards,
+Deploy `web/config.html` — a phone editor for all of it. The portal
+is gated by **Google Auth** (set `ALLOWED_EMAIL` in the page and the
+email in `database.rules.json` — `/config` writes require
+`auth.token.email` to match). The device *reads* `/config` publicly and
+never writes it, so it needs no credentials. The CARD tile becomes a
+dial-scrolled gallery of the images under `gallery` (bizcards,
 travel/bus QR codes, coupons…), each cached in flash.
 
 ### 5. Todos
