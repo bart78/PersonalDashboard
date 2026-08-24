@@ -385,7 +385,19 @@ void drawCardScreen()
                 display.setTextColor(GxEPD_BLACK);
             }
             display.setCursor(18, y);
-            display.print(rtBooksTitle[i]);
+            String t = rtBooksTitle[i];
+            int16_t tx1, ty1;
+            uint16_t tw, th;
+            while (t.length() > 1)
+            {
+                display.getTextBounds(t.c_str(), 0, 0, &tx1, &ty1, &tw, &th);
+                if (tw <= 232)
+                    break;
+                t = t.substring(0, t.length() - 1);
+            }
+            if (t != rtBooksTitle[i])
+                t += "...";
+            display.print(t);
         }
         return;
     }
@@ -610,7 +622,7 @@ bool fetchPageUrl(int idx, const char *pageUrl, uint8_t **outBuf, size_t *outLen
     return true;
 }
 
-char *fetchText(const char *url)
+char *fetchText(const char *url, int timeoutMs = 90000)
 {
     HTTPClient http;
     if (!http.begin(url))
@@ -618,7 +630,7 @@ char *fetchText(const char *url)
         Serial.println("fetchText: begin failed");
         return NULL;
     }
-    http.setTimeout(90000);
+    http.setTimeout(timeoutMs);
     int code = http.GET();
     Serial.printf("fetchText: GET %d\n", code);
     if (code != 200)
@@ -1077,13 +1089,13 @@ void syncAll()
         if (rtUrls[i][0])
             total++;
     }
-    total += bookConfigCount;
+    total += galCount + bookConfigCount;
     if (total == 0)
     {
         Serial.println("Sync: no urls");
         return;
     }
-    Serial.printf("Sync all: %d cards + %d books\n", total - bookConfigCount, bookConfigCount);
+    Serial.printf("Sync all: %d cards + %d gallery + %d books\n", total - galCount - bookConfigCount, galCount, bookConfigCount);
     int done = 0;
     for (int i = 0; i < NUM_CARDS; i++)
     {
@@ -1145,9 +1157,53 @@ void syncAll()
             Serial.printf("Card %d synced\n", i + 1);
         }
     }
+    for (int g = 0; g < galCount; g++)
+    {
+        done++;
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            showSyncModal("OFFLINE", done, total);
+            delay(1200);
+            break;
+        }
+        showSyncModal("SYNCING", done, total);
+        char path[32];
+        snprintf(path, sizeof(path), "/gal_%02d.bin", g + 1);
+        if (!urlChanged(100 + g, rtGallery[g]) && SPIFFS.exists(path))
+        {
+            Serial.printf("Gallery %d unchanged\n", g + 1);
+            continue;
+        }
+        uint8_t *pngData = NULL;
+        size_t pngLen = 0;
+        if (!fetchPageUrl(100 + g, rtGallery[g], &pngData, &pngLen))
+        {
+            showSyncModal("FAILED", done, total);
+            delay(800);
+            Serial.printf("Gallery %d fetch FAILED\n", g + 1);
+            continue;
+        }
+        bool ok = decodePage(pngData, pngLen);
+        free(pngData);
+        if (ok)
+        {
+            File gf = SPIFFS.open(path, "wb");
+            if (gf)
+            {
+                gf.write(pageBuf, PAGE_BYTES);
+                gf.close();
+                markFetched(100 + g, rtGallery[g]);
+                Serial.printf("Gallery %d synced\n", g + 1);
+            }
+            else
+            {
+                Serial.printf("Gallery %d write FAILED\n", g + 1);
+            }
+        }
+    }
     if (WiFi.status() == WL_CONNECTED)
     {
-        char *fresh = fetchText(NEWS_URL);
+        char *fresh = fetchText(NEWS_URL, 20000);
         if (fresh)
         {
             stripCdata(fresh);
@@ -1387,6 +1443,7 @@ void setup()
     Serial.println("Shell booted");
     if (wifiOk)
     {
+        fetchConfig();
         unsigned long lastSyncT = 0;
         Preferences sp;
         sp.begin("crow", false);
@@ -1459,7 +1516,7 @@ void loop()
             if (curCard == 5 && activeBook)
             {
                 activeBook = NULL;
-                screen = SCREEN_HOME;
+                bookModeList = true;
                 render();
             }
             else if (curCard == 5 && bookModeList)
@@ -1647,7 +1704,7 @@ void loop()
                 inNews = false;
                 if (WiFi.status() == WL_CONNECTED)
                 {
-                    char *fresh = fetchText(NEWS_URL);
+                    char *fresh = fetchText(NEWS_URL, 12000);
                     if (fresh)
                     {
                         stripCdata(fresh);
