@@ -15,6 +15,8 @@
   .row button { font-size: 14px; padding: 8px 12px; background: #000; color: #fff; border: none; }
   .save { font-size: 16px; padding: 14px 20px; background: #000; color: #fff; border: none; letter-spacing: 3px; margin-top: 24px; width: 100%; }
   .status { font-size: 11px; letter-spacing: 2px; color: #666; margin-top: 12px; }
+  .toplinks { display: flex; gap: 16px; margin: 12px 0 4px; }
+  .toplinks a { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: #000; text-decoration: none; border-bottom: 1px solid #000; padding-bottom: 2px; }
   .auth { text-align: center; margin-top: 60px; }
   .auth button { font-size: 16px; padding: 14px 24px; background: #000; color: #fff; border: none; letter-spacing: 2px; }
   .auth .who { font-size: 12px; margin-top: 12px; color: #666; letter-spacing: 1px; }
@@ -23,6 +25,10 @@
 </head>
 <body>
   <h1>CONFIG</h1>
+  <div class="toplinks">
+    <a href="todo.html">TODO LIST</a>
+    <a id="newsLink" href="#" target="_blank" rel="noopener">NEWS</a>
+  </div>
 
   <div class="auth" id="auth">
     <button onclick="signIn()">SIGN IN WITH GOOGLE</button>
@@ -97,6 +103,7 @@ async function load() {
     for (let i = 0; i < 8; i++) cardUrls.push((c.card_urls && c.card_urls[String(i)]) || "");
     gallery = c.gallery || {};
     document.getElementById("news").value = c.news_url || "";
+    document.getElementById("newsLink").href = c.news_url || "#";
   } catch (e) { /* defaults */ }
   render();
 }
@@ -151,6 +158,7 @@ async function save() {
   try {
     await db.ref("config").set(body);
     document.getElementById("status").textContent = "SAVED — device picks up on next sync";
+    document.getElementById("newsLink").href = document.getElementById("news").value || "#";
   } catch (e) {
     document.getElementById("status").textContent = "SAVE FAILED: " + e.message;
   }
