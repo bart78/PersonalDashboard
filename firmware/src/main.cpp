@@ -772,6 +772,28 @@ void markFetched(int slot, const char *url)
     p.end();
 }
 
+bool urlChangedBook(int slot, const char *url)
+{
+    Preferences p;
+    p.begin("crow", false);
+    char key[8];
+    snprintf(key, sizeof(key), "ub%d", slot);
+    String last = p.getString(key, "");
+    bool changed = last != url;
+    p.end();
+    return changed;
+}
+
+void markFetchedBook(int slot, const char *url)
+{
+    Preferences p;
+    p.begin("crow", false);
+    char key[8];
+    snprintf(key, sizeof(key), "ub%d", slot);
+    p.putString(key, url);
+    p.end();
+}
+
 void fetchConfig()
 {
     HTTPClient http;
@@ -1015,12 +1037,13 @@ void syncAll()
         if (rtUrls[i][0])
             total++;
     }
+    total += bookConfigCount;
     if (total == 0)
     {
         Serial.println("Sync: no urls");
         return;
     }
-    Serial.printf("Sync all: %d cards\n", total);
+    Serial.printf("Sync all: %d cards + %d books\n", total - bookConfigCount, bookConfigCount);
     int done = 0;
     for (int i = 0; i < NUM_CARDS; i++)
     {
@@ -1100,6 +1123,48 @@ void syncAll()
             Serial.println("News text synced");
         }
     }
+    for (int b = 0; b < bookConfigCount; b++)
+    {
+        done++;
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            showSyncModal("OFFLINE", done, total);
+            delay(1200);
+            break;
+        }
+        showSyncModal("SYNCING", done, total);
+        char path[32];
+        snprintf(path, sizeof(path), "/book_%d.txt", b + 1);
+        if (!urlChangedBook(b, rtBooksUrl[b]) && SPIFFS.exists(path))
+        {
+            Serial.printf("Book %d unchanged\n", b + 1);
+            continue;
+        }
+        char *fresh = fetchText(rtBooksUrl[b]);
+        if (fresh)
+        {
+            stripCdata(fresh);
+            File nf = SPIFFS.open(path, "w");
+            if (nf)
+            {
+                nf.write((const uint8_t *)fresh, strlen(fresh));
+                nf.close();
+                markFetchedBook(b, rtBooksUrl[b]);
+                Serial.printf("Book %d synced\n", b + 1);
+            }
+            else
+            {
+                Serial.printf("Book %d write FAILED\n", b + 1);
+            }
+            free((void *)fresh);
+        }
+        else
+        {
+            showSyncModal("FAILED", done, total);
+            delay(800);
+            Serial.printf("Book %d fetch FAILED\n", b + 1);
+        }
+    }
     showSyncModal("DONE", total, total);
     delay(1200);
     render();
@@ -1135,6 +1200,16 @@ void setup()
             bf.write(BOOK_TEXT, BOOK_TEXT_LEN);
             bf.close();
             Serial.println("Book seeded");
+        }
+    }
+    if (!SPIFFS.exists("/book_1.txt"))
+    {
+        File bf = SPIFFS.open("/book_1.txt", "w");
+        if (bf)
+        {
+            bf.write(BOOK_TEXT, BOOK_TEXT_LEN);
+            bf.close();
+            Serial.println("Book 1 seeded");
         }
     }
     if (SPIFFS.exists("/house.txt"))
@@ -1567,21 +1642,6 @@ void loop()
         {
             char path[32];
             snprintf(path, sizeof(path), "/book_%d.txt", selBook + 1);
-            if (WiFi.status() == WL_CONNECTED)
-            {
-                char *fresh = fetchText(rtBooksUrl[selBook]);
-                if (fresh)
-                {
-                    stripCdata(fresh);
-                    File nf = SPIFFS.open(path, "w");
-                    if (nf)
-                    {
-                        nf.write((const uint8_t *)fresh, strlen(fresh));
-                        nf.close();
-                    }
-                    free((void *)fresh);
-                }
-            }
             if (openBook(path))
             {
                 activeBookUrl = rtBooksUrl[selBook];
