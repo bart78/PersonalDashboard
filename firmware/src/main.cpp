@@ -822,20 +822,8 @@ void markFetchedBook(int slot, const char *url)
     p.end();
 }
 
-void fetchConfig()
+void applyConfig(const String &body)
 {
-    HTTPClient http;
-    if (!http.begin(CONFIG_DB ".json"))
-        return;
-    http.setTimeout(15000);
-    int code = http.GET();
-    if (code != 200)
-    {
-        http.end();
-        return;
-    }
-    String body = http.getString();
-    http.end();
     DynamicJsonDocument doc(8192);
     DeserializationError err = deserializeJson(doc, body);
     if (err)
@@ -974,6 +962,40 @@ void fetchConfig()
         if (rtUrls[i][0])
             nCards++;
     Serial.printf("Config loaded: %d cards, %d gallery, %d books\n", nCards, galCount, bookConfigCount);
+}
+
+void fetchConfig()
+{
+    HTTPClient http;
+    if (!http.begin(CONFIG_DB ".json"))
+        return;
+    http.setTimeout(15000);
+    int code = http.GET();
+    if (code != 200)
+    {
+        http.end();
+        return;
+    }
+    String body = http.getString();
+    http.end();
+    File cf = SPIFFS.open("/config.json", "w");
+    if (cf)
+    {
+        cf.print(body);
+        cf.close();
+    }
+    applyConfig(body);
+}
+
+void loadConfigCache()
+{
+    File cf = SPIFFS.open("/config.json", "r");
+    if (!cf)
+        return;
+    String body = cf.readString();
+    cf.close();
+    if (body.length() > 8)
+        applyConfig(body);
 }
 
 bool parseTodoBody(const String &body)
@@ -1471,6 +1493,11 @@ void setup()
         {
             Serial.println("Sync skipped (recent)");
         }
+    }
+    else
+    {
+        loadConfigCache();
+        Serial.println("Offline boot: config from cache");
     }
 }
 
