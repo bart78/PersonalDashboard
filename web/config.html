@@ -214,7 +214,6 @@ async function save() {
   try {
     await db.ref("config").set(body);
     document.getElementById("status").textContent = "SAVED — device picks up on next sync";
-    document.getElementById("newsLink").href = document.getElementById("news").value || "#";
   } catch (e) {
     document.getElementById("status").textContent = "SAVE FAILED: " + e.message;
   }
