@@ -528,13 +528,14 @@ void sleepNow()
 {
     Serial.println("Sleeping");
     SD.end();
+    WiFi.disconnect();
     esp_sleep_enable_ext1_wakeup(
         (1ULL << PIN_HOME) | (1ULL << PIN_EXIT) | (1ULL << PIN_PRV) | (1ULL << PIN_NEXT) | (1ULL << PIN_OK),
         ESP_EXT1_WAKEUP_ANY_LOW);
     esp_light_sleep_start();
-    Serial.println("Woken");
-    if (WiFi.status() != WL_CONNECTED)
-        WiFi.reconnect();
+    Serial.printf("Woken (ext1: %08llx)\n", (unsigned long long)esp_sleep_get_ext1_wakeup_status());
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
 }
 
 bool sdInit(void)
@@ -680,6 +681,7 @@ char *fetchText(const char *url, int timeoutMs = 90000)
         http.end();
         return NULL;
     }
+    size_t expected = http.getSize();
     size_t cap = 64 * 1024;
     char *buf = (char *)ps_malloc(cap);
     if (!buf)
@@ -694,7 +696,7 @@ char *fetchText(const char *url, int timeoutMs = 90000)
         if (got + 4096 > cap)
         {
             size_t newCap = cap * 2;
-            if (newCap > 1024 * 1024)
+            if (newCap > 2 * 1024 * 1024)
             {
                 free(buf);
                 http.end();
@@ -716,6 +718,12 @@ char *fetchText(const char *url, int timeoutMs = 90000)
         got += n;
     }
     http.end();
+    if (expected >= 0 && (int64_t)got != expected)
+    {
+        Serial.printf("fetchText: truncated %d of %d bytes\n", (int)got, (int)expected);
+        free(buf);
+        return NULL;
+    }
     buf[got] = 0;
     Serial.printf("Fetched text %d bytes\n", (int)got);
     return buf;
@@ -1482,6 +1490,7 @@ void setup()
     sdBootOk = sdInit();
 
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     unsigned long t0 = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000)
