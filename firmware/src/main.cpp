@@ -72,7 +72,7 @@ char rtUrls[NUM_CARDS][256];
 bool rtStatic[NUM_CARDS] = {false, false, false, false, false, false, false, false};
 char rtGallery[8][256];
 char rtNews[256];
-#define MAX_CFG_BOOKS 4
+#define MAX_CFG_BOOKS 16
 char rtBooksTitle[MAX_CFG_BOOKS][40];
 char rtBooksUrl[MAX_CFG_BOOKS][256];
 int bookConfigCount = 0;
@@ -848,6 +848,45 @@ void markFetchedBook(int slot, const char *url)
     p.end();
 }
 
+void scanSdBooks()
+{
+    if (!sdBootOk)
+        return;
+    SD.mkdir("/books");
+    File dir = SD.open("/books");
+    if (!dir || !dir.isDirectory())
+        return;
+    File f = dir.openNextFile();
+    while (f && bookConfigCount < MAX_CFG_BOOKS)
+    {
+        if (!f.isDirectory())
+        {
+            const char *name = f.name();
+            const char *base = strrchr(name, '/');
+            base = base ? base + 1 : name;
+            size_t nlen = strlen(base);
+            if (nlen > 4 && strcasecmp(base + nlen - 4, ".txt") == 0)
+            {
+                char title[40];
+                snprintf(title, sizeof(title), "%.*s", (int)(nlen - 4), base);
+                bool dup = false;
+                for (int i = 0; i < bookConfigCount; i++)
+                    if (strcmp(rtBooksTitle[i], title) == 0)
+                        dup = true;
+                if (!dup)
+                {
+                    snprintf(rtBooksTitle[bookConfigCount], 40, "%s", title);
+                    snprintf(rtBooksUrl[bookConfigCount], 256, "/books/%s", base);
+                    bookConfigCount++;
+                    Serial.printf("SD book: %s\n", title);
+                }
+            }
+        }
+        f = dir.openNextFile();
+    }
+    dir.close();
+}
+
 void applyConfig(const String &body)
 {
     DynamicJsonDocument doc(8192);
@@ -988,6 +1027,7 @@ void applyConfig(const String &body)
         if (rtUrls[i][0])
             nCards++;
     Serial.printf("Config loaded: %d cards, %d gallery, %d books\n", nCards, galCount, bookConfigCount);
+    scanSdBooks();
 }
 
 void fetchConfig()
@@ -1097,6 +1137,12 @@ bool fetchTodos()
 bool openBook(const char *path)
 {
     File f = SPIFFS.open(path, "r");
+    bool fromSd = false;
+    if (!f)
+    {
+        f = SD.open(path, "r");
+        fromSd = true;
+    }
     if (!f)
         return false;
     size_t sz = f.size();
@@ -1109,7 +1155,7 @@ bool openBook(const char *path)
     activeBook = (const char *)ps_malloc(sz + 1);
     if (!activeBook)
         return false;
-    File rf = SPIFFS.open(path, "r");
+    File rf = fromSd ? SD.open(path, "r") : SPIFFS.open(path, "r");
     rf.read((uint8_t *)activeBook, sz);
     rf.close();
     ((char *)activeBook)[sz] = 0;
@@ -1525,6 +1571,7 @@ void setup()
         loadConfigCache();
         Serial.println("Offline boot: config from cache");
     }
+    scanSdBooks();
 }
 
 void loop()
@@ -1547,6 +1594,7 @@ void loop()
         else if (!sdBootOk && sdInit())
         {
             sdBootOk = true;
+            scanSdBooks();
             File rf = SD.open("/reminders.txt");
             if (rf)
             {
