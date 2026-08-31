@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<meta name="description" content="Offline-first bus arrival logger (KST) for a Seongnam stop — ground-truth capture for the buslog learner.">
+<title>BusLog · Seongnam</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #121826;
+    --line: #263046;
+    --text: #e8edf4;
+    --dim: #8a93a6;
+    --accent: #38bdf8;
+    --warn: #fbbf24;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    max-width: 560px; margin: 0 auto; min-height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  }
+  button { font-family: inherit; touch-action: manipulation; }
+
+  header { display: flex; align-items: center; gap: 10px; }
+  h1 { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--dim); font-weight: 700; flex: 1; }
+  .counter { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  #installBtn { background: var(--panel); color: var(--accent); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; }
+  .hidden { display: none !important; }
+
+  .clock { text-align: center; margin: 12px 0 4px; }
+  .clock .time {
+    font-size: 58px; font-weight: 700; letter-spacing: 1px;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .clock .date { font-size: 14px; color: var(--dim); margin-top: 4px; }
+
+  .note-row { display: flex; gap: 8px; margin-top: 16px; }
+  .note-row input {
+    flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 10px 12px; font-size: 15px; outline: none; font-family: inherit;
+  }
+  .note-row input:focus { border-color: var(--accent); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip {
+    background: var(--panel); border: 1px solid var(--line); color: var(--dim);
+    border-radius: 999px; padding: 6px 12px; font-size: 12px;
+  }
+  .chip.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .rbtn {
+    min-height: 96px; border: none; border-radius: var(--radius);
+    font-size: 30px; font-weight: 800; color: #fff; font-family: inherit;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .18), 0 2px 8px rgba(0, 0, 0, .35);
+    user-select: none; cursor: pointer;
+  }
+  .rbtn:active { transform: scale(.96); filter: brightness(1.2); }
+  .rbtn.flash { animation: flash 320ms ease-out; }
+  @keyframes flash { 0% { filter: brightness(2.4); } 100% { filter: brightness(1); } }
+
+  .actions { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 10px; margin: 4px 0 14px; }
+  .abtn {
+    padding: 16px 8px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .abtn:active { filter: brightness(1.3); }
+  #undo { font-size: 17px; color: var(--warn); border-color: #4a3a12; }
+  #undo:disabled { color: #4a3a12; border-color: #241d0a; }
+  .back { margin-bottom: 14px; max-width: 160px; }
+
+  .recent { margin-top: 6px; }
+  .recent .row {
+    display: grid; grid-template-columns: 56px 60px 1fr; gap: 8px; align-items: baseline;
+    padding: 8px 2px; border-bottom: 1px solid #161d2b; font-size: 14px;
+  }
+  .recent .row .t { font-variant-numeric: tabular-nums; color: var(--dim); }
+  .recent .row .r { font-weight: 800; }
+  .recent .row .n { color: var(--dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent .row:first-child .t, .recent .row:first-child .r { color: var(--accent); }
+  .recent.empty { color: var(--dim); font-size: 13px; text-align: center; padding: 14px 0; }
+
+  .foot { text-align: center; margin-top: 14px; }
+  .ghost { background: none; border: none; color: var(--dim); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 6px; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  h2 { font-size: 16px; letter-spacing: 1px; text-transform: uppercase; margin: 4px 0 10px; color: var(--text); }
+  h2 small { display: block; color: var(--dim); font-size: 11px; text-transform: none; letter-spacing: 0; margin-top: 3px; }
+
+  .heat { display: grid; grid-template-columns: 52px repeat(40, 1fr); gap: 2px; }
+  .heat .label { font-size: 12px; color: var(--dim); font-weight: 700; display: flex; align-items: center; }
+  .heat .hdr { font-size: 9px; color: var(--dim); text-align: center; align-self: end; line-height: 1.1; }
+  .cell { height: 18px; border-radius: 3px; }
+
+  .legend { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--dim); margin: 12px 0 4px; }
+  .legend .bar { flex: 1; max-width: 220px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(56,189,248,.08), rgba(56,189,248,1)); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+  th, td { padding: 8px 8px; border-bottom: 1px solid #161d2b; text-align: left; }
+  th { color: var(--dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .hint { color: var(--dim); font-size: 12px; line-height: 1.5; margin-top: 14px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: calc(104px + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(10px);
+    background: #1b2434; color: var(--text); border: 1px solid var(--line);
+    padding: 10px 18px; border-radius: 999px; font-size: 15px;
+    opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
+    z-index: 60; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<header>
+  <h1>BusLog · Seongnam</h1>
+  <span class="counter" id="counter"></span>
+  <button id="installBtn" class="hidden">Install</button>
+</header>
+
+<section class="clock">
+  <div class="time" id="clock">--:--:--</div>
+  <div class="date" id="clockdate"></div>
+</section>
+
+<section id="view-home" class="view active">
+  <div class="note-row">
+    <input id="note" maxlength="40" placeholder="Note for next tap (optional)" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="actions">
+    <button class="abtn" id="undo" disabled>↩ Undo</button>
+    <button class="abtn" id="exportBtn">Export CSV</button>
+    <button class="abtn" id="coverageBtn">Coverage</button>
+  </div>
+
+  <div class="recent" id="recent"></div>
+
+  <div class="foot">
+    <button class="ghost" id="resetBtn">Delete all data</button>
+  </div>
+</section>
+
+<section id="view-coverage" class="view">
+  <button class="abtn back" id="backBtn">← Back</button>
+  <h2>Coverage<small>weekdays only (Mon–Fri, KST) · 30-min buckets · 04:00–24:00</small></h2>
+  <div class="heat" id="heat"></div>
+  <div class="legend">
+    <span id="legMin">0 days</span>
+    <div class="bar"></div>
+    <span id="legMax">–</span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Route</th><th class="n">Days</th><th class="n">Weekday days</th></tr>
+    </thead>
+    <tbody id="daysBody"></tbody>
+  </table>
+  <p class="hint" id="covNote"></p>
+</section>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+const ROUTES = ['32', '73', '310', '340', '4103', '9409', '9507'];
+const ROUTE_COLORS = {
+  '32': '#e63946', '73': '#f4a261', '310': '#e9c46a', '340': '#2a9d8f',
+  '4103': '#457b9d', '9409': '#9b5de5', '9507': '#84a59d'
+};
+const STORAGE_KEY = 'buslog.v1';
+const NOTE_CHIPS = ['crowded', 'not my bus', 'empty', 'late'];
+const HEAT_START = 4 * 60;
+const HEAT_END = 24 * 60;
+const HEAT_BUCKETS = (HEAT_END - HEAT_START) / 30;
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// ---------- pure helpers ----------
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+const kstFmt = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Seoul',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit',
+  hourCycle: 'h23'
+});
+
+function kstParts(at) {
+  const out = {};
+  for (const p of kstFmt.formatToParts(at)) out[p.type] = p.value;
+  return out;
+}
+
+// Build the entry in KST wall-clock time. Korea has no DST and is always
+// +09:00, so we format the offset string directly from the KST parts derived
+// via Intl — never from the device timezone.
+function makeEntry(route, note, at) {
+  const p = kstParts(at);
+  const hour = Number(p.hour);
+  const minute = Number(p.minute);
+  const date = p.year + '-' + p.month + '-' + p.day;
+  const iso = date + 'T' + p.hour + ':' + p.minute + ':00+09:00';
+  return { id: uid(), route, date, iso, minuteOfDay: hour * 60 + minute, note: note || '' };
+}
+
+function weekdayOf(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+function isWeekday(dateStr) {
+  const w = weekdayOf(dateStr);
+  return w >= 1 && w <= 5;
+}
+
+function bucketOf(minuteOfDay) {
+  if (minuteOfDay < HEAT_START || minuteOfDay >= HEAT_END) return null;
+  return Math.floor((minuteOfDay - HEAT_START) / 30);
+}
+
+function bucketLabel(b) {
+  const m = HEAT_START + b * 30;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+
+function csvCell(v) {
+  const s = String(v == null ? '' : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+// Data contract: route,date,iso8601_kst,minute_of_day[,note] — exact column
+// order, header included, chronological by KST time.
+function buildCsv(entries) {
+  const sorted = entries.slice().sort((a, b) => a.iso.localeCompare(b.iso));
+  const rows = [['route', 'date', 'iso8601_kst', 'minute_of_day', 'note']];
+  for (const e of sorted) rows.push([e.route, e.date, e.iso, e.minuteOfDay, e.note]);
+  return rows.map((r) => r.map(csvCell).join(',')).join('\n') + '\n';
+}
+
+// Coverage: rows=routes, cols=30-min buckets 04:00-24:00, cell = number of
+// distinct WEEKDAY (KST) dates with >=1 arrival in that bucket.
+function coverageFor(entries, route) {
+  const days = new Set();
+  const weekdays = new Set();
+  const cells = new Map();
+  for (const e of entries) {
+    if (e.route !== route) continue;
+    days.add(e.date);
+    if (isWeekday(e.date)) {
+      weekdays.add(e.date);
+      const b = bucketOf(e.minuteOfDay);
+      if (b != null) {
+        let s = cells.get(b);
+        if (!s) { s = new Set(); cells.set(b, s); }
+        s.add(e.date);
+      }
+    }
+  }
+  return { days: days.size, weekdays: weekdays.size, cells };
+}
+
+// ---------- persistence ----------
+function loadState() {
+  const empty = { v: 1, entries: [] };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return empty;
+    const s = JSON.parse(raw);
+    if (s && s.v === 1 && Array.isArray(s.entries)) {
+      return { v: 1, entries: s.entries };
+    }
+  } catch (e) { /* corrupt storage: start fresh */ }
+  return empty;
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* quota */ }
+}
+
+// ---------- state ----------
+let state = loadState();
+let deferredPrompt = null;
+let toastTimer = null;
+
+// ---------- view ----------
+const $ = (id) => document.getElementById(id);
+
+function vibrate(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* unsupported */ }
+}
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function flash(btn) {
+  if (!btn) return;
+  btn.classList.remove('flash');
+  void btn.offsetWidth;
+  btn.classList.add('flash');
+}
+
+function logEntry(entry, btn) {
+  state.entries.push(entry);
+  save();
+  renderHome();
+  flash(btn);
+  vibrate([0, 45, 40, 60]);
+  toast('logged ' + entry.route + ' at ' + entry.iso.slice(11, 16));
+}
+
+function readNote() {
+  const v = $('note').value.trim();
+  $('note').value = '';
+  document.querySelectorAll('.chip.on').forEach((c) => c.classList.remove('on'));
+  return v;
+}
+
+function onRouteTap(route, btn) {
+  logEntry(makeEntry(route, readNote(), new Date()), btn);
+}
+
+function onUndo() {
+  const last = state.entries[state.entries.length - 1];
+  if (!last) return;
+  state.entries.pop();
+  save();
+  renderHome();
+  vibrate(30);
+  toast('undo: removed ' + last.route + ' at ' + last.iso.slice(11, 16));
+}
+
+function onExport() {
+  const csv = buildCsv(state.entries);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  const p = kstParts(new Date());
+  a.href = URL.createObjectURL(blob);
+  a.download = 'buslog_' + p.year + '-' + p.month + '-' + p.day + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast('exported ' + state.entries.length + ' rows');
+}
+
+function onReset() {
+  if (!state.entries.length) { toast('no data to delete'); return; }
+  if (!confirm('Delete ALL ' + state.entries.length + ' logged arrivals? This cannot be undone.')) return;
+  state.entries = [];
+  save();
+  renderHome();
+  toast('all data deleted');
+}
+
+// ---------- rendering ----------
+function tick() {
+  const p = kstParts(new Date());
+  $('clock').textContent = p.hour + ':' + p.minute + ':' + p.second;
+  const wd = WEEKDAY_NAMES[weekdayOf(p.year + '-' + p.month + '-' + p.day)];
+  $('clockdate').textContent = p.year + '-' + p.month + '-' + p.day + ' · ' + wd + ' · KST';
+}
+
+function renderHome() {
+  $('counter').textContent = state.entries.length + ' logged';
+  $('undo').disabled = state.entries.length === 0;
+  const el = $('recent');
+  el.innerHTML = '';
+  const recent = state.entries.slice(-8).reverse();
+  if (!recent.length) {
+    el.className = 'recent empty';
+    el.textContent = 'No arrivals logged yet — tap a route when a bus passes.';
+    return;
+  }
+  el.className = 'recent';
+  for (const e of recent) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const t = document.createElement('span'); t.className = 't'; t.textContent = e.iso.slice(11, 16);
+    const r = document.createElement('span'); r.className = 'r'; r.textContent = e.route;
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = e.note || '';
+    row.append(t, r, n);
+    el.appendChild(row);
+  }
+}
+
+function renderCoverage() {
+  const rows = ROUTES.map((route) => ({ route, cov: coverageFor(state.entries, route) }));
+  let max = 0;
+  for (const { cov } of rows) {
+    for (const s of cov.cells.values()) max = Math.max(max, s.size);
+  }
+  const heat = $('heat');
+  heat.innerHTML = '';
+  const spacer = document.createElement('div');
+  spacer.className = 'label';
+  heat.appendChild(spacer);
+  for (let b = 0; b < HEAT_BUCKETS; b++) {
+    const d = document.createElement('div');
+    d.className = 'hdr';
+    d.textContent = b % 4 === 0 ? String(Math.floor((HEAT_START + b * 30) / 60)).padStart(2, '0') : '';
+    d.title = bucketLabel(b);
+    heat.appendChild(d);
+  }
+  for (const { route, cov } of rows) {
+    const lab = document.createElement('div');
+    lab.className = 'label';
+    lab.textContent = route;
+    heat.appendChild(lab);
+    for (let b = 0; b < HEAT_BUCKETS; b++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      const n = cov.cells.get(b) ? cov.cells.get(b).size : 0;
+      if (n > 0) {
+        const a = 0.08 + 0.92 * (n / Math.max(1, max));
+        c.style.background = 'rgba(56,189,248,' + a.toFixed(3) + ')';
+        c.title = route + ' ' + bucketLabel(b) + ' — ' + n + (n === 1 ? ' day' : ' days');
+      } else {
+        c.style.background = 'rgba(255,255,255,0.04)';
+        c.title = route + ' ' + bucketLabel(b) + ' — no data';
+      }
+      heat.appendChild(c);
+    }
+  }
+  $('legMax').textContent = max + (max === 1 ? ' day' : ' days');
+  const body = $('daysBody');
+  body.innerHTML = '';
+  for (const { route, cov } of rows) {
+    const tr = document.createElement('tr');
+    const rTd = document.createElement('td'); rTd.textContent = route;
+    const dTd = document.createElement('td'); dTd.className = 'n'; dTd.textContent = cov.days;
+    const wTd = document.createElement('td'); wTd.className = 'n'; wTd.textContent = cov.weekdays;
+    tr.append(rTd, dTd, wTd);
+    body.appendChild(tr);
+  }
+  $('covNote').textContent =
+    'Weekdays only (Mon–Fri by the KST date) — weekends are excluded because the learner buckets day-type separately and weekend data is too sparse. ' +
+    'A Korean public holiday falling on a weekday is counted as a weekday until a holiday list is added.';
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
+  if (name === 'coverage') renderCoverage();
+}
+
+// ---------- build / init ----------
+function buildGrid() {
+  const grid = $('grid');
+  for (const route of ROUTES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rbtn';
+    b.textContent = route;
+    b.style.background = ROUTE_COLORS[route];
+    b.addEventListener('click', () => onRouteTap(route, b));
+    grid.appendChild(b);
+  }
+}
+
+function buildChips() {
+  const wrap = $('chips');
+  for (const chip of NOTE_CHIPS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = chip;
+    b.addEventListener('click', () => {
+      const input = $('note');
+      if (b.classList.contains('on')) {
+        b.classList.remove('on');
+        input.value = '';
+      } else {
+        document.querySelectorAll('.chip.on').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        input.value = chip;
+        input.focus();
+      }
+    });
+    wrap.appendChild(b);
+  }
+}
+
+function init() {
+  buildGrid();
+  buildChips();
+  $('undo').addEventListener('click', onUndo);
+  $('exportBtn').addEventListener('click', onExport);
+  $('coverageBtn').addEventListener('click', () => showView('coverage'));
+  $('backBtn').addEventListener('click', () => showView('home'));
+  $('resetBtn').addEventListener('click', onReset);
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    $('installBtn').classList.remove('hidden');
+  });
+  $('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    $('installBtn').classList.add('hidden');
+  });
+  renderHome();
+  tick();
+  setInterval(tick, 1000);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { ROUTES, kstParts, makeEntry, isWeekday, bucketOf, bucketLabel, buildCsv, coverageFor };
+}
+</script>
+</body>
+</html>
