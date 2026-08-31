@@ -387,6 +387,51 @@ void updateTodoRow(int i)
     } while (display.nextPage());
 }
 
+void drawBookRow(int i)
+{
+    if (i < 0 || i >= bookConfigCount)
+        return;
+    int y = 70 + i * 30;
+    if (i == selBook)
+    {
+        display.fillRect(12, y - 18, 248, 26, GxEPD_BLACK);
+        display.setTextColor(GxEPD_WHITE);
+    }
+    else
+    {
+        display.setTextColor(GxEPD_BLACK);
+    }
+    display.setCursor(18, y);
+    String t = rtBooksTitle[i];
+    int16_t tx1, ty1;
+    uint16_t tw, th;
+    while (t.length() > 1)
+    {
+        display.getTextBounds(t.c_str(), 0, 0, &tx1, &ty1, &tw, &th);
+        if (tw <= 232)
+            break;
+        t = t.substring(0, t.length() - 1);
+    }
+    if (t != rtBooksTitle[i])
+        t += "...";
+    display.print(t);
+}
+
+void updateBookRows(int a, int b)
+{
+    int yA = 70 + a * 30;
+    int yB = 70 + b * 30;
+    int top = (yA < yB ? yA : yB) - 18;
+    int bot = (yA > yB ? yA : yB) + 8;
+    display.setPartialWindow(12, top, 248, bot - top + 1);
+    display.firstPage();
+    do
+    {
+        drawBookRow(a);
+        drawBookRow(b);
+    } while (display.nextPage());
+}
+
 void drawCardScreen()
 {
     if (curCard == 5 && bookModeList && bookConfigCount > 0)
@@ -399,30 +444,7 @@ void drawCardScreen()
         display.drawLine(12, 42, 260, 42, GxEPD_BLACK);
         for (int i = 0; i < bookConfigCount; i++)
         {
-            int y = 70 + i * 30;
-            if (i == selBook)
-            {
-                display.fillRect(12, y - 18, 248, 26, GxEPD_BLACK);
-                display.setTextColor(GxEPD_WHITE);
-            }
-            else
-            {
-                display.setTextColor(GxEPD_BLACK);
-            }
-            display.setCursor(18, y);
-            String t = rtBooksTitle[i];
-            int16_t tx1, ty1;
-            uint16_t tw, th;
-            while (t.length() > 1)
-            {
-                display.getTextBounds(t.c_str(), 0, 0, &tx1, &ty1, &tw, &th);
-                if (tw <= 232)
-                    break;
-                t = t.substring(0, t.length() - 1);
-            }
-            if (t != rtBooksTitle[i])
-                t += "...";
-            display.print(t);
+            drawBookRow(i);
         }
         return;
     }
@@ -1689,8 +1711,9 @@ void loop()
         }
         else if (screen == SCREEN_CARD && curCard == 5 && bookModeList && selBook > 0)
         {
+            int old = selBook;
             selBook--;
-            render();
+            updateBookRows(old, selBook);
         }
         else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx > 0)
         {
@@ -1730,8 +1753,9 @@ void loop()
         }
         else if (screen == SCREEN_CARD && curCard == 5 && bookModeList && selBook < bookConfigCount - 1)
         {
+            int old = selBook;
             selBook++;
-            render();
+            updateBookRows(old, selBook);
         }
         else if (screen == SCREEN_CARD && curCard == 6 && galMode && galIdx < galCount - 1)
         {

@@ -44,7 +44,7 @@
   <h1>TODO</h1>
   <div class="count" id="count"></div>
   <div class="addrow">
-    <input id="new" placeholder="Add an item..." autocomplete="off">
+    <input id="new" placeholder="Add an item..." autocomplete="off" maxlength="21">
     <button onclick="addItem()">ADD</button>
   </div>
   <div id="list"></div>
@@ -118,7 +118,7 @@ async function remove(key) {
 
 async function addItem() {
   const input = document.getElementById("new");
-  const text = input.value.trim();
+  const text = input.value.trim().slice(0, 21);
   if (!text) return;
   const key = String(Date.now());
   await db.ref("todo/" + key).set({ text, done: false });
