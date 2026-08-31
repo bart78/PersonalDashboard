@@ -551,10 +551,15 @@ void sleepNow()
     Serial.println("Sleeping");
     SD.end();
     WiFi.disconnect();
+    const int pins[5] = {PIN_HOME, PIN_EXIT, PIN_PRV, PIN_NEXT, PIN_OK};
+    for (int i = 0; i < 5; i++)
+        gpio_hold_en((gpio_num_t)pins[i]);
     esp_sleep_enable_ext1_wakeup(
         (1ULL << PIN_HOME) | (1ULL << PIN_EXIT) | (1ULL << PIN_PRV) | (1ULL << PIN_NEXT) | (1ULL << PIN_OK),
         ESP_EXT1_WAKEUP_ANY_LOW);
     esp_light_sleep_start();
+    for (int i = 0; i < 5; i++)
+        gpio_hold_dis((gpio_num_t)pins[i]);
     Serial.printf("Woken (ext1: %08llx)\n", (unsigned long long)esp_sleep_get_ext1_wakeup_status());
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -1374,17 +1379,38 @@ void syncAll()
         if (fresh)
         {
             stripCdata(fresh);
+            size_t len = strlen(fresh);
             File nf = SPIFFS.open(path, "w");
             if (nf)
             {
-                nf.write((const uint8_t *)fresh, strlen(fresh));
+                size_t total = 0;
+                const size_t CH = 8192;
+                for (size_t o = 0; o < len; o += CH)
+                {
+                    size_t n = len - o;
+                    if (n > CH)
+                        n = CH;
+                    if (nf.write((const uint8_t *)fresh + o, n) != n)
+                    {
+                        total = 0;
+                        break;
+                    }
+                    total += n;
+                }
                 nf.close();
-                markFetchedBook(b, rtBooksUrl[b]);
-                Serial.printf("Book %d synced\n", b + 1);
+                if (total == len)
+                {
+                    markFetchedBook(b, rtBooksUrl[b]);
+                    Serial.printf("Book %d synced (%d bytes)\n", b + 1, (int)total);
+                }
+                else
+                {
+                    Serial.printf("Book %d write FAILED (%d/%d)\n", b + 1, (int)total, (int)len);
+                }
             }
             else
             {
-                Serial.printf("Book %d write FAILED\n", b + 1);
+                Serial.printf("Book %d write FAILED (open)\n", b + 1);
             }
             free((void *)fresh);
         }
