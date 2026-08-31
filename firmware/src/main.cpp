@@ -212,11 +212,11 @@ void drawHomeOverlays()
     display.setCursor(12, 782);
     char status[40];
     uint32_t freeK = (SPIFFS.totalBytes() - SPIFFS.usedBytes()) / 1024;
-    snprintf(status, sizeof(status), "WIFI:%s FS:%d.%dM", wifiOk ? "OK" : "--", freeK / 1024, (freeK % 1024) / 102);
+    snprintf(status, sizeof(status), "WIFI:%s SD:%s %d.%dM", wifiOk ? "OK" : "--", sdBootOk ? "OK" : "--", freeK / 1024, (freeK % 1024) / 102);
     display.print(status);
-    display.setCursor(140, 782);
+    display.setCursor(148, 782);
     display.print("MENU:SYNC");
-    display.setCursor(222, 782);
+    display.setCursor(232, 782);
     display.print("EXIT");
 }
 
