@@ -1439,7 +1439,8 @@ void setup()
 {
     Serial.begin(115200);
     readBatteryPct();
-    Serial.printf("Battery: %d%%\n", cachedBatteryPct);
+    if (cachedBatteryPct >= 0)
+        Serial.printf("Battery: %d%%\n", cachedBatteryPct);
     pinMode(PIN_SCREEN_PWR, OUTPUT);
     digitalWrite(PIN_SCREEN_PWR, HIGH);
     for (int i = 0; i < 5; i++)
