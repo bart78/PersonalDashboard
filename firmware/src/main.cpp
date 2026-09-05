@@ -94,17 +94,25 @@ uint32_t bookKeyHash(const char *s)
     return h;
 }
 
-int readBatteryPct()
+int cachedBatteryPct = -1;
+
+void readBatteryPct()
 {
     if (BATTERY_PIN < 0)
-        return -1;
+    {
+        cachedBatteryPct = -1;
+        return;
+    }
     uint32_t mv = analogReadMilliVolts(BATTERY_PIN);
     float v = mv * BATTERY_DIVIDER / 1000.0f;
     if (v > 4.2f)
         v = 4.2f;
     if (v < 3.2f)
-        return 0;
-    return (int)((v - 3.2f) / 1.0f * 100.0f);
+    {
+        cachedBatteryPct = 0;
+        return;
+    }
+    cachedBatteryPct = (int)((v - 3.2f) / 1.0f * 100.0f);
 }
 
 void saveBookPage()
@@ -190,7 +198,7 @@ void drawHomeOverlays()
     display.setTextColor(GxEPD_BLACK);
     display.setCursor(12, 96);
     display.print(dateStr);
-    int bat = readBatteryPct();
+    int bat = cachedBatteryPct;
     if (bat >= 0)
     {
         display.drawRect(236, 86, 24, 12, GxEPD_BLACK);
@@ -1430,6 +1438,8 @@ void syncAll()
 void setup()
 {
     Serial.begin(115200);
+    readBatteryPct();
+    Serial.printf("Battery: %d%%\n", cachedBatteryPct);
     pinMode(PIN_SCREEN_PWR, OUTPUT);
     digitalWrite(PIN_SCREEN_PWR, HIGH);
     for (int i = 0; i < 5; i++)
