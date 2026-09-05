@@ -1,0 +1,173 @@
+CrowPanel
+ESP32 E-paper HMI Display
+Please read this user manual carefully before use and keep it properly 
+for future reference
+User Manual
+Package List
+1* CrowPanel 
+ESP32 E-Paper HMI Display
+1* USB-A to USB-C 
+Cable
+1* User Manual
+The following list diagram is for reference only. 
+Please refer to the actual product inside the package for details.
+Expansion Resources
+• Wiki
+• MCU Datasheet
+• Driver Datasheet
+• Github
+• Schematic
+For More Details 
+Please Scan the QR Code
+User
+Manual
+ESP32
+E-Paper 
+HMI
+- 1 -
+Parameters
+Size
+MCU
+Wireless Communication
+Communication Mode
+Interface
+Button
+Development Environment
+Driver Chip
+Resolution
+Refresh Mode
+Global Refresh
+Display Color
+Material
+Active Area
+Operation Voltage
+Operation Temperature
+1.54” 2.13”
+ESP32-S3, 8MB Flash, 8MB PSRAM
+2.4 GHz Wi-Fi (IEEE 802.11b/g/n) and Bluetooth 5 (LE)
+SPI
+1* UART0, 1* BAT 1* UART0, 1* BAT, 1* GPIO
+1* Rotary Switch, 1* Menu Button, 1* Exit Button, 
+1* REST Button, 1* BOOT Button
+Arduino IDE
+SSD1680 SSD1680Z, JD79661
+152*152 122*250
+Partial Refresh (saves more power)
+2s
+Black & White
+Active Matrix Electro Phoretic Display
+37.18(H)*48.32(L) 31.2(H)*63.19(L)
+2.2~3.7V
+0~50℃
+- 2 -
+Parameters
+Size
+MCU
+Wireless Communication
+Communication Mode
+Interface
+Button
+Development Environment
+Driver Chip
+Resolution
+Refresh Mode
+Global Refresh
+Display Color
+Material
+Active Area
+Operation Voltage
+Operation Temperature
+2.9” 3.7”
+ESP32-S3-WROOM-1-N8R8, 8MB Flash, 8MB PSRAM
+2.4 GHz Wi-Fi (IEEE 802.11b/g/n) and Bluetooth 5 (LE)
+SPI
+1* UART0, 1* BAT, 1* GPIO, 1* TF Card Slot
+1* Rotary Switch, 1* Menu Button, 1* Exit Button, 
+1* REST Button, 1* BOOT Button
+Arduino IDE
+SSD1680Z UC8253
+128*296
+3s
+240*416
+Partial Refresh (saves more power)
+Black & White
+Active Matrix Electro Phoretic Display
+29.056(H)*66.896(L) 47.04(H)*81.54(L)
+2.2~3.7V
+0~50℃
+- 3 -
+• Avoid exposing the screen to sunlight or strong light sources to 
+prevent affecting its viewing effect and lifespan.
+• Avoid pressing or shaking the screen hard during use to prevent 
+loosening of internal connections and components.
+• For screen malfunctions, such as flickering, color distortion, or 
+unclear display, stop use and seek professional repair.
+• Before repairing or replacing any equipment components, make sure 
+to turn off the power and disconnect from the device.
+Parameters
+Size
+MCU
+Wireless Communication
+Communication Mode
+Interface
+Button
+Development Environment
+Driver Chip
+Resolution
+Refresh Mode
+Global Refresh
+Display Color
+Material
+Active Area
+Operation Voltage
+Operation Temperature
+4.2” 5.79”
+ESP32-S3-WROOM-1-N8R8, 8MB Flash, 8MB PSRAM
+2.4 GHz Wi-Fi (IEEE 802.11b/g/n) and Bluetooth 5 (LE)
+SPI
+1* UART0, 1* BAT, 1* GPIO, 1* TF Card Slot
+1* Rotary Switch, 1* Menu Button, 1* Exit Button, 
+1* REST Button, 1* BOOT Button
+Arduino IDE
+SSD1683 2* SSD1683
+400*300 272*792
+Partial Refresh (saves more power)
+5s 6s
+Black & White
+Active Matrix Electro Phoretic Display
+84.8(H)*63.6(L) 47.74(H)*139.00(L)
+2.2~3.7V
+0~50℃
+- 4 -
+Safety Instructions
+Company Name: Elecrow Technology Development Co., Ltd.
+Company website: https://www.elecrow.com
+• Avoid exposing the screen to sunlight or strong light sources to 
+prevent affecting its viewing effect and lifespan.
+• Avoid pressing or shaking the screen hard during use to prevent 
+loosening of internal connections and components.
+• For screen malfunctions, such as flickering, color distortion, or 
+unclear display, stop use and seek professional repair.
+• Before repairing or replacing any equipment components, make sure 
+to turn off the power and disconnect from the device.
+To ensure safe use and avoid injury or property damage to yourself 
+and others, please follow the safety instructions below.
+- 5 -
+1.54 Inch E-Paper HMI Display Buttons and Interfaces
+SKU: DIE09154S
+-6 -
+2.13 Inch E-Paper HMI Display Buttons and Interfaces
+SKU: DIE01021S
+- 7 -
+2.9 Inch E-Paper HMI Display Buttons and Interfaces
+SKU: DIE01129S
+- 8 -
+3.7 Inch E-Paper HMI Display Buttons and Interfaces
+SKU: DIE01237S
+- 9 -
+4.2 Inch E-Paper HMI Display Buttons and Interfaces
+SKU: DIE07300S
+- 10 -
+5.79 Inch E-Paper HMI Display Buttons and Interfaces
+SKU: DIS08792E
+- 11 -

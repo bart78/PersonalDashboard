@@ -21,7 +21,7 @@
 #include "book_text.h"
 
 #define PIN_SCREEN_PWR 7
-#define BATTERY_PIN 11
+#define BATTERY_PIN -1
 #define BATTERY_DIVIDER 2.0f
 #define PIN_HOME 2
 #define PIN_EXIT 1
