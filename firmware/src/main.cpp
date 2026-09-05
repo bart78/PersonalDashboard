@@ -716,7 +716,7 @@ char *fetchText(const char *url, int timeoutMs = 90000)
         http.end();
         return NULL;
     }
-    size_t expected = http.getSize();
+    int64_t expected = http.getSize();
     size_t cap = 64 * 1024;
     char *buf = (char *)ps_malloc(cap);
     if (!buf)
