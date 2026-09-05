@@ -1350,7 +1350,7 @@ void syncAll()
     }
     if (WiFi.status() == WL_CONNECTED)
     {
-        char *fresh = fetchText(NEWS_URL, 20000);
+        char *fresh = fetchText(NEWS_URL, 50000);
         if (fresh)
         {
             stripCdata(fresh);
@@ -1872,7 +1872,7 @@ void loop()
                 inNews = false;
                 if (WiFi.status() == WL_CONNECTED)
                 {
-                    char *fresh = fetchText(NEWS_URL, 12000);
+                    char *fresh = fetchText(NEWS_URL, 50000);
                     if (fresh)
                     {
                         stripCdata(fresh);
