@@ -6,6 +6,7 @@
 #include <time.h>
 #include <esp32-hal-psram.h>
 #include <SPIFFS.h>
+#include "esp_spiffs.h"
 #include <PNGdec.h>
 #include <ArduinoJson.h>
 #define ENABLE_GxEPD2_GFX 1
@@ -1282,6 +1283,7 @@ void syncAll()
         }
         uint8_t *pngData = NULL;
         size_t pngLen = 0;
+        Serial.printf("Card %d fetching: %s\n", i + 1, rtUrls[i]);
         if (!fetchPageUrl(i, rtUrls[i], &pngData, &pngLen))
         {
             showSyncModal("FAILED", done, total);
@@ -1294,17 +1296,22 @@ void syncAll()
         {
             char p[32];
             snprintf(p, sizeof(p), "/page_%02d.bin", i + 1);
-            File pf = SPIFFS.open(p, "wb");
-            if (pf)
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                pf.write(pageBuf, PAGE_BYTES);
+                File pf = SPIFFS.open(p, "wb");
+                if (!pf)
+                    break;
+                size_t w = pf.write(pageBuf, PAGE_BYTES);
                 pf.close();
-                pageReady[i] = true;
-                Serial.printf("LS cache write %d ok\n", i + 1);
-            }
-            else
-            {
-                Serial.printf("LS cache write %d FAILED\n", i + 1);
+                if (w == PAGE_BYTES)
+                {
+                    pageReady[i] = true;
+                    Serial.printf("LS cache write %d ok\n", i + 1);
+                    break;
+                }
+                Serial.printf("LS cache write %d short (%d), gc + retry\n", i + 1, (int)w);
+                esp_spiffs_check("spiffs");
+                SPIFFS.remove(p);
             }
             markFetched(i, rtUrls[i]);
             Serial.printf("Card %d synced\n", i + 1);
@@ -1335,16 +1342,21 @@ void syncAll()
         free(pngData);
         if (ok)
         {
-            File gf = SPIFFS.open(path, "wb");
-            if (gf)
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                gf.write(pageBuf, PAGE_BYTES);
+                File gf = SPIFFS.open(path, "wb");
+                if (!gf)
+                    break;
+                size_t w = gf.write(pageBuf, PAGE_BYTES);
                 gf.close();
-                Serial.printf("Gallery %d synced\n", g + 1);
-            }
-            else
-            {
-                Serial.printf("Gallery %d write FAILED\n", g + 1);
+                if (w == PAGE_BYTES)
+                {
+                    Serial.printf("Gallery %d synced\n", g + 1);
+                    break;
+                }
+                Serial.printf("Gallery %d write short (%d), gc + retry\n", g + 1, (int)w);
+                esp_spiffs_check("spiffs");
+                SPIFFS.remove(path);
             }
         }
     }
@@ -1354,16 +1366,24 @@ void syncAll()
         if (fresh)
         {
             stripCdata(fresh);
-            if (newsText)
-                free((void *)newsText);
-            newsText = fresh;
-            File nf = SPIFFS.open("/news.txt", "w");
-            if (nf)
+            if (strlen(fresh) < 300)
             {
-                nf.write((const uint8_t *)newsText, strlen(newsText));
-                nf.close();
+                Serial.printf("News response too small (%d), keeping cache\n", (int)strlen(fresh));
+                free((void *)fresh);
             }
-            Serial.println("News text synced");
+            else
+            {
+                if (newsText)
+                    free((void *)newsText);
+                newsText = fresh;
+                File nf = SPIFFS.open("/news.txt", "w");
+                if (nf)
+                {
+                    nf.write((const uint8_t *)newsText, strlen(newsText));
+                    nf.close();
+                }
+                Serial.println("News text synced");
+            }
         }
     }
     for (int b = 0; b < bookConfigCount; b++)
@@ -1612,6 +1632,27 @@ void setup()
     display.display();
 
     render();
+    for (int ci = 0; ci < NUM_CARDS; ci++)
+    {
+        char cpath[32];
+        snprintf(cpath, sizeof(cpath), "/page_%02d.bin", ci + 1);
+        File cf = SPIFFS.open(cpath, "rb");
+        if (cf)
+        {
+            uint8_t *tmp = (uint8_t *)malloc(PAGE_BYTES);
+            if (tmp)
+            {
+                size_t rd = cf.read(tmp, PAGE_BYTES);
+                size_t dark = 0;
+                for (size_t k = 0; k < rd; k++)
+                    if (tmp[k] == 0)
+                        dark++;
+                Serial.printf("CACHE %d: %d bytes, %d%% dark\n", ci + 1, (int)rd, (int)(dark * 100 / (rd ? rd : 1)));
+                free(tmp);
+            }
+            cf.close();
+        }
+    }
     Serial.println("Shell booted");
     if (wifiOk)
     {
