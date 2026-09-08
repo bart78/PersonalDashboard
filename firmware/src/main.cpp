@@ -482,7 +482,12 @@ void drawCardScreen()
         else
         {
             display.fillScreen(GxEPD_WHITE);
-            display.drawInvertedBitmap(0, 0, PLACEHOLDER, SCREEN_W, SCREEN_H, GxEPD_BLACK);
+            display.setFont(&FreeSans12pt7b);
+            display.setTextColor(GxEPD_BLACK);
+            display.setCursor(60, 380);
+            display.print("PRESS MENU");
+            display.setCursor(44, 420);
+            display.print("TO SYNC");
         }
         return;
     }
@@ -529,7 +534,12 @@ void drawCardScreen()
     }
     Serial.printf("CARD %d: placeholder\n", curCard + 1);
     display.fillScreen(GxEPD_WHITE);
-    display.drawInvertedBitmap(0, 0, PLACEHOLDER, SCREEN_W, SCREEN_H, GxEPD_BLACK);
+    display.setFont(&FreeSans12pt7b);
+    display.setTextColor(GxEPD_BLACK);
+    display.setCursor(60, 380);
+    display.print("PRESS MENU");
+    display.setCursor(44, 420);
+    display.print("TO SYNC");
 }
 
 void render()
