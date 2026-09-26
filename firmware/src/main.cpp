@@ -586,7 +586,7 @@ void sleepNow()
 
 bool sdInit(void)
 {
-    const uint32_t speeds[] = {80000000, 25000000, 4000000};
+    const uint32_t speeds[] = {4000000, 25000000, 80000000};
     SD_SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
     for (int i = 0; i < 3; i++)
     {
