@@ -919,6 +919,8 @@ void scanSdBooks()
             const char *base = strrchr(name, '/');
             base = base ? base + 1 : name;
             size_t nlen = strlen(base);
+            if (base[0] == '.')
+                continue;
             if (nlen > 4 && strcasecmp(base + nlen - 4, ".txt") == 0)
             {
                 char title[40];
@@ -1217,6 +1219,23 @@ bool openBook(const char *path)
     return true;
 }
 
+size_t writeChunked(File &f, const uint8_t *buf, size_t len)
+{
+    const size_t CH = 4096;
+    size_t total = 0;
+    for (size_t o = 0; o < len; o += CH)
+    {
+        size_t n = len - o;
+        if (n > CH)
+            n = CH;
+        size_t w = f.write(buf + o, n);
+        if (w != n)
+            return 0;
+        total += w;
+    }
+    return total;
+}
+
 void showSyncModal(const char *msg, int cur, int total)
 {
     display.setPartialWindow(56, 368, 160, 68);
@@ -1306,22 +1325,26 @@ void syncAll()
         {
             char p[32];
             snprintf(p, sizeof(p), "/page_%02d.bin", i + 1);
-            for (int attempt = 0; attempt < 2; attempt++)
             {
                 File pf = SPIFFS.open(p, "wb");
-                if (!pf)
-                    break;
-                size_t w = pf.write(pageBuf, PAGE_BYTES);
-                pf.close();
-                if (w == PAGE_BYTES)
+                if (pf)
                 {
-                    pageReady[i] = true;
-                    Serial.printf("LS cache write %d ok\n", i + 1);
-                    break;
+                    size_t w = writeChunked(pf, pageBuf, PAGE_BYTES);
+                    pf.close();
+                    if (w == PAGE_BYTES)
+                    {
+                        pageReady[i] = true;
+                        Serial.printf("LS cache write %d ok\n", i + 1);
+                    }
+                    else
+                    {
+                        Serial.printf("LS cache write %d FAILED (%d)\n", i + 1, (int)w);
+                    }
                 }
-                Serial.printf("LS cache write %d short (%d), gc + retry\n", i + 1, (int)w);
-                esp_spiffs_check("spiffs");
-                SPIFFS.remove(p);
+                else
+                {
+                    Serial.printf("LS cache write %d open FAILED\n", i + 1);
+                }
             }
             markFetched(i, rtUrls[i]);
             Serial.printf("Card %d synced\n", i + 1);
@@ -1352,21 +1375,21 @@ void syncAll()
         free(pngData);
         if (ok)
         {
-            for (int attempt = 0; attempt < 2; attempt++)
             {
                 File gf = SPIFFS.open(path, "wb");
-                if (!gf)
-                    break;
-                size_t w = gf.write(pageBuf, PAGE_BYTES);
-                gf.close();
-                if (w == PAGE_BYTES)
+                if (gf)
                 {
-                    Serial.printf("Gallery %d synced\n", g + 1);
-                    break;
+                    size_t w = writeChunked(gf, pageBuf, PAGE_BYTES);
+                    gf.close();
+                    if (w == PAGE_BYTES)
+                        Serial.printf("Gallery %d synced\n", g + 1);
+                    else
+                        Serial.printf("Gallery %d write FAILED (%d)\n", g + 1, (int)w);
                 }
-                Serial.printf("Gallery %d write short (%d), gc + retry\n", g + 1, (int)w);
-                esp_spiffs_check("spiffs");
-                SPIFFS.remove(path);
+                else
+                {
+                    Serial.printf("Gallery %d open FAILED\n", g + 1);
+                }
             }
         }
     }
@@ -1494,7 +1517,7 @@ void setup()
         File bf = SPIFFS.open("/house.txt", "w");
         if (bf)
         {
-            bf.write(BOOK_TEXT, BOOK_TEXT_LEN);
+            writeChunked(bf, BOOK_TEXT, BOOK_TEXT_LEN);
             bf.close();
             Serial.println("Book seeded");
         }
@@ -1504,7 +1527,7 @@ void setup()
         File bf = SPIFFS.open("/book_1.txt", "w");
         if (bf)
         {
-            bf.write(BOOK_TEXT, BOOK_TEXT_LEN);
+            writeChunked(bf, BOOK_TEXT, BOOK_TEXT_LEN);
             bf.close();
             Serial.println("Book 1 seeded");
         }
