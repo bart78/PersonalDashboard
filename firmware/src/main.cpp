@@ -553,7 +553,7 @@ void drawBusCard()
             display.setFont(&FreeSans9pt7b);
             char line[64];
             if (nxtqIdx >= 0)
-                snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d  NXT %02d:%02d",
+                snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d NXT %02d:%02d",
                          sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60,
                          dt->slots[nxtqIdx].med / 60, dt->slots[nxtqIdx].med % 60);
             else
