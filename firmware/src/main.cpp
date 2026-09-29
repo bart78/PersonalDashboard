@@ -481,25 +481,21 @@ void drawBusCard()
     display.drawLine(0, 52, 272, 52, GxEPD_BLACK);
     display.setFont(&FreeSans9pt7b);
     display.setTextColor(GxEPD_BLACK);
-    char head[48];
     const char *dtype = (busDayType(0).slots == BUS_MODEL.weekdays[0].slots) ? "WEEKDAY" : "WEEKEND";
-    snprintf(head, sizeof(head), "%s  %s", BUS_STOP_ID, dtype);
-    display.setCursor(12, 24);
-    display.print(head);
+    display.setFont(&FreeSans12pt7b);
+    display.setTextColor(GxEPD_BLACK);
+    display.setCursor(12, 28);
+    display.print(dtype);
     if (now >= 0)
     {
         char tbuf[16];
         snprintf(tbuf, sizeof(tbuf), "%02d:%02d", now / 60, now % 60);
-        display.setFont(&FreeSans12pt7b);
-        display.setCursor(196, 28);
+        display.setCursor(200, 28);
         display.print(tbuf);
-        display.setFont(&FreeSans9pt7b);
-        display.setCursor(248, 42);
-        display.print("KST");
     }
     else
     {
-        display.setCursor(190, 30);
+        display.setCursor(190, 28);
         display.print("SYNCING");
     }
     for (int r = 0; r < BUS_MODEL.route_count; r++)
@@ -541,7 +537,7 @@ void drawBusCard()
             display.setFont(&FreeSans9pt7b);
             char ql[16];
             snprintf(ql, sizeof(ql), "%d%% +-3m", sl.q);
-            display.setCursor(14 + 8, y0 + 52);
+            display.setCursor(14 + badgeW + 8, y0 + 33);
             display.print(ql);
             display.setFont(&FreeSerif12pt7b);
             int mins = sl.med - now;
@@ -574,7 +570,7 @@ void drawBusCard()
                 if (dt->slots[s].q >= 60 && dt->slots[s].med > now)
                     any = true;
             display.setFont(&FreeSans9pt7b);
-            display.setCursor(14 + 8, y0 + 52);
+            display.setCursor(14 + badgeW + 8, y0 + 33);
             display.print("--");
             display.setFont(&FreeSerif12pt7b);
             display.setCursor(196, y0 + 34);
