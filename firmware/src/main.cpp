@@ -552,15 +552,21 @@ void drawBusCard()
             display.print(hero);
             display.setFont(&FreeSans9pt7b);
             char line[64];
-            if (nxtqIdx >= 0)
-                snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d NXT %02d:%02d",
-                         sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60,
-                         dt->slots[nxtqIdx].med / 60, dt->slots[nxtqIdx].med % 60);
-            else
-                snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d",
-                         sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60);
+            snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d",
+                     sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60);
             display.setCursor(14, y0 + 74);
             display.print(line);
+            if (nxtqIdx >= 0)
+            {
+                char nt[24];
+                snprintf(nt, sizeof(nt), "NXT %02d:%02d",
+                         dt->slots[nxtqIdx].med / 60, dt->slots[nxtqIdx].med % 60);
+                int16_t nx1, ny1;
+                uint16_t nw, nh;
+                display.getTextBounds(nt, 0, 0, &nx1, &ny1, &nw, &nh);
+                display.setCursor(272 - 14 - nw - nx1, y0 + 74);
+                display.print(nt);
+            }
         }
         else if (nextIdx >= 0)
         {
