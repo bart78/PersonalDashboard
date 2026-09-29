@@ -535,10 +535,10 @@ void drawBusCard()
         {
             const BusSlot &sl = dt->slots[nextIdx];
             display.setFont(&FreeSans9pt7b);
-            char ql[16];
-            snprintf(ql, sizeof(ql), "%d%% +-3m", sl.q);
+            char mt[8];
+            snprintf(mt, sizeof(mt), "%02d:%02d", sl.med / 60, sl.med % 60);
             display.setCursor(14 + badgeW + 8, y0 + 33);
-            display.print(ql);
+            display.print(mt);
             display.setFont(&FreeSerif12pt7b);
             int mins = sl.med - now;
             char hero[24];
@@ -552,14 +552,14 @@ void drawBusCard()
             display.setCursor(272 - 14 - hw - hx1, y0 + 34);
             display.print(hero);
             display.setFont(&FreeSans9pt7b);
-            int eb = sl.early - 2;
-            if (eb < 0)
-                eb = 0;
             char line[64];
             if (nextNextIdx >= 0)
-                snprintf(line, sizeof(line), "LEAVE %02d:%02d  NXT %02d:%02d", eb / 60, eb % 60, dt->slots[nextNextIdx].med / 60, dt->slots[nextNextIdx].med % 60);
+                snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d  NXT %02d:%02d",
+                         sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60,
+                         dt->slots[nextNextIdx].med / 60, dt->slots[nextNextIdx].med % 60);
             else
-                snprintf(line, sizeof(line), "LEAVE %02d:%02d", eb / 60, eb % 60);
+                snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d",
+                         sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60);
             display.setCursor(14, y0 + 74);
             display.print(line);
         }
