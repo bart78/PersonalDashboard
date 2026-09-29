@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <Preferences.h>
 #include <time.h>
+#include "esp_sleep.h"
 #include <esp32-hal-psram.h>
 #include <SPIFFS.h>
 #include "esp_spiffs.h"
@@ -497,8 +498,8 @@ void drawBusCard()
     }
     else
     {
-        display.setCursor(190, 28);
-        display.print("SYNCING");
+        display.setCursor(168, 28);
+        display.print("NO CLOCK");
     }
     for (int r = 0; r < BUS_MODEL.route_count; r++)
     {
@@ -738,6 +739,10 @@ void render()
 void sleepNow()
 {
     Serial.println("Sleeping");
+    Preferences tp;
+    tp.begin("crow", false);
+    tp.putLong("lastTime", (long)time(nullptr));
+    tp.end();
     SD.end();
     WiFi.disconnect();
     const int pins[5] = {PIN_HOME, PIN_EXIT, PIN_PRV, PIN_NEXT, PIN_OK};
@@ -1784,7 +1789,25 @@ void setup()
     {
         configTime(9 * 3600, 0, "pool.ntp.org");
         struct tm ntp_t;
-        getLocalTime(&ntp_t, 6000);
+        getLocalTime(&ntp_t, 3000);
+    }
+    {
+        struct tm ck;
+        if (!getLocalTime(&ck, 0) || ck.tm_year < 126)
+        {
+            Preferences tp;
+            tp.begin("crow", false);
+            time_t saved = tp.getLong("lastTime", 0);
+            tp.end();
+            if (saved > 0)
+            {
+                timeval tv;
+                tv.tv_sec = saved + (time_t)(esp_sleep_get_wakeup_time() / 1000000);
+                tv.tv_usec = 0;
+                settimeofday(&tv, NULL);
+                Serial.printf("Clock restored from NVS (offline boot)\n");
+            }
+        }
     }
     Serial.printf("WiFi: %s\n", wifiOk ? "ok" : "no");
     if (wifiOk)
