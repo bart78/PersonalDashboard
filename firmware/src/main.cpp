@@ -2207,13 +2207,35 @@ void loop()
     }
     delay(2);
     static int lastBusMinute = -1;
+    static bool busModalShown = false;
+    if (screen == SCREEN_CARD && curCard == 1 && millis() - lastActivity > 10 * 60 * 1000 - 15000 && !busModalShown)
+    {
+        busModalShown = true;
+        display.setPartialWindow(56, 356, 160, 84);
+        display.firstPage();
+        do
+        {
+            display.fillRect(56, 356, 160, 84, GxEPD_WHITE);
+            display.drawRect(56, 356, 160, 84, GxEPD_BLACK);
+            display.setFont(&FreeSans12pt7b);
+            display.setTextColor(GxEPD_BLACK);
+            display.setCursor(76, 392);
+            display.print("SLEEPING");
+            display.setCursor(66, 424);
+            display.print("SOON");
+            display.setFont(&FreeSans9pt7b);
+            display.setCursor(70, 438);
+            display.print("PRESS ANY KEY");
+        } while (display.nextPage());
+    }
+    if (anyActivity)
+        busModalShown = false;
     if (screen == SCREEN_CARD && curCard == 1)
     {
         int bm = kstMinutes();
         if (bm != lastBusMinute)
         {
             lastBusMinute = bm;
-            lastActivity = millis();
             display.setPartialWindow(0, 0, SCREEN_W, SCREEN_H);
             display.firstPage();
             do
@@ -2226,7 +2248,8 @@ void loop()
     {
         lastBusMinute = -1;
     }
-    if (millis() - lastActivity > IDLE_SLEEP_MS)
+    unsigned long idleFor = (screen == SCREEN_CARD && curCard == 1) ? (10UL * 60 * 1000) : IDLE_SLEEP_MS;
+    if (millis() - lastActivity > idleFor)
     {
         sleepNow();
     }
