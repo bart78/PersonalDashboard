@@ -507,15 +507,16 @@ void drawBusCard()
         for (int s = 0; s < dt->count; s++)
         {
             const BusSlot &sl = dt->slots[s];
-            if (now >= 0 && sl.med > now)
+            if (now >= 0 && sl.med > now && sl.q >= 60 && sl.n >= 2)
             {
                 if (nextIdx < 0)
                     nextIdx = s;
-                else if (nxtqIdx < 0 && sl.q >= 60)
+                else if (nxtqIdx < 0)
                     nxtqIdx = s;
+                else
+                    break;
             }
         }
-        bool claim = nextIdx >= 0 && dt->slots[nextIdx].q >= 60;
         int badgeW = 0;
         {
             int16_t x1, y1;
@@ -530,7 +531,7 @@ void drawBusCard()
         display.setCursor(14 + 8, y0 + 33);
         display.print(BUS_MODEL.route_ids[r]);
         display.setTextColor(GxEPD_BLACK);
-        if (nextIdx >= 0 && claim)
+        if (nextIdx >= 0)
         {
             const BusSlot &sl = dt->slots[nextIdx];
             display.setFont(&FreeSans9pt7b);
@@ -566,26 +567,6 @@ void drawBusCard()
                 display.getTextBounds(nt, 0, 0, &nx1, &ny1, &nw, &nh);
                 display.setCursor(272 - 14 - nw - nx1, y0 + 74);
                 display.print(nt);
-            }
-        }
-        else if (nextIdx >= 0)
-        {
-            display.setFont(&FreeSans9pt7b);
-            display.setCursor(14 + badgeW + 8, y0 + 33);
-            display.print("--");
-            display.setFont(&FreeSerif12pt7b);
-            display.setCursor(196, y0 + 34);
-            display.print("--");
-            display.setFont(&FreeSans9pt7b);
-            if (nxtqIdx >= 0)
-            {
-                const BusSlot &ns = dt->slots[nxtqIdx];
-                char line[64];
-                snprintf(line, sizeof(line), "NXT %02d:%02d  ARR %02d:%02d-%02d:%02d",
-                         ns.med / 60, ns.med % 60,
-                         ns.early / 60, ns.early % 60, ns.late / 60, ns.late % 60);
-                display.setCursor(14, y0 + 74);
-                display.print(line);
             }
         }
         else
