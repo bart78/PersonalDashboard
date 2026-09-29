@@ -44,7 +44,7 @@ GxEPD2_BW<GxEPD2_579_GDEY0579T93, GxEPD2_579_GDEY0579T93::HEIGHT> display(
 #define BASE_ROW_BYTES (SCREEN_W / 8)
 
 const char *CARD_NAMES[NUM_CARDS] = {
-    "WEATHER", "NAV", "CALENDAR", "NEWS", "STOCKS", "BOOKS", "CARD", "TODO"};
+    "WEATHER", "BUS", "CALENDAR", "NEWS", "STOCKS", "BOOKS", "CARD", "TODO"};
 const int CELL_X[2] = {8, 142};
 const int CELL_ROWS[4] = {120, 276, 432, 588};
 const int CELL_W = 122;
@@ -441,6 +441,165 @@ void updateBookRows(int a, int b)
     } while (display.nextPage());
 }
 
+#include "bus_model.h"
+
+int kstDayNum()
+{
+    return (int)((time(nullptr) + 9 * 3600) / 86400 - 20454);
+}
+
+int kstDayOfWeek()
+{
+    int days = (int)((time(nullptr) + 9 * 3600) / 86400);
+    return (days + 4) % 7;
+}
+
+int kstMinutes()
+{
+    struct tm t;
+    if (!getLocalTime(&t, 0))
+        return -1;
+    return t.tm_hour * 60 + t.tm_min;
+}
+
+const BusDayType &busDayType(int route)
+{
+    int dow = kstDayOfWeek();
+    if (dow == 0 || dow == 6)
+        return BUS_MODEL.weekends[route];
+    int dn = kstDayNum();
+    for (int i = 0; i < BUS_MODEL.holiday_count; i++)
+        if (BUS_MODEL.holidays[i] == dn)
+            return BUS_MODEL.weekends[route];
+    return BUS_MODEL.weekdays[route];
+}
+
+void drawBusCard()
+{
+    int now = kstMinutes();
+    display.fillScreen(GxEPD_WHITE);
+    display.drawLine(0, 52, 272, 52, GxEPD_BLACK);
+    display.setFont(&FreeSans9pt7b);
+    display.setTextColor(GxEPD_BLACK);
+    char head[48];
+    const char *dtype = (busDayType(0).slots == BUS_MODEL.weekdays[0].slots) ? "WEEKDAY" : "WEEKEND";
+    snprintf(head, sizeof(head), "%s  %s", BUS_STOP_ID, dtype);
+    display.setCursor(12, 24);
+    display.print(head);
+    if (now >= 0)
+    {
+        char tbuf[16];
+        snprintf(tbuf, sizeof(tbuf), "%02d:%02d", now / 60, now % 60);
+        display.setFont(&FreeSans12pt7b);
+        display.setCursor(196, 28);
+        display.print(tbuf);
+        display.setFont(&FreeSans9pt7b);
+        display.setCursor(248, 42);
+        display.print("KST");
+    }
+    else
+    {
+        display.setCursor(190, 30);
+        display.print("SYNCING");
+    }
+    for (int r = 0; r < BUS_MODEL.route_count; r++)
+    {
+        int y0 = 60 + r * 102;
+        display.drawRect(6, y0, 260, 96, GxEPD_BLACK);
+        const BusDayType *dt = &busDayType(r);
+        int nextIdx = -1, nextNextIdx = -1;
+        for (int s = 0; s < dt->count; s++)
+        {
+            const BusSlot &sl = dt->slots[s];
+            if (now >= 0 && sl.med > now && sl.q >= 60)
+            {
+                if (nextIdx < 0)
+                    nextIdx = s;
+                else if (nextNextIdx < 0)
+                    nextNextIdx = s;
+                else
+                    break;
+            }
+        }
+        int badgeW = 0;
+        {
+            int16_t x1, y1;
+            uint16_t w, h;
+            display.setFont(&FreeSans12pt7b);
+            display.getTextBounds(BUS_MODEL.route_ids[r], 0, 0, &x1, &y1, &w, &h);
+            badgeW = w + 16;
+        }
+        display.fillRect(14, y0 + 12, badgeW, 30, GxEPD_BLACK);
+        display.setFont(&FreeSans12pt7b);
+        display.setTextColor(GxEPD_WHITE);
+        display.setCursor(14 + 8, y0 + 33);
+        display.print(BUS_MODEL.route_ids[r]);
+        display.setTextColor(GxEPD_BLACK);
+        if (nextIdx >= 0)
+        {
+            const BusSlot &sl = dt->slots[nextIdx];
+            display.setFont(&FreeSans9pt7b);
+            char ql[16];
+            snprintf(ql, sizeof(ql), "%d%% +-3m", sl.q);
+            display.setCursor(14 + 8, y0 + 52);
+            display.print(ql);
+            display.setFont(&FreeSerif12pt7b);
+            int mins = sl.med - now;
+            char hero[24];
+            if (mins <= 0)
+                snprintf(hero, sizeof(hero), "DUE");
+            else
+                snprintf(hero, sizeof(hero), "%dm", mins);
+            int16_t hx1, hy1;
+            uint16_t hw, hh;
+            display.getTextBounds(hero, 0, 0, &hx1, &hy1, &hw, &hh);
+            display.setCursor(272 - 14 - hw - hx1, y0 + 34);
+            display.print(hero);
+            display.setFont(&FreeSans9pt7b);
+            int eb = sl.early - 2;
+            if (eb < 0)
+                eb = 0;
+            char line[64];
+            if (nextNextIdx >= 0)
+                snprintf(line, sizeof(line), "LEAVE %02d:%02d  NXT %02d:%02d", eb / 60, eb % 60, dt->slots[nextNextIdx].med / 60, dt->slots[nextNextIdx].med % 60);
+            else
+                snprintf(line, sizeof(line), "LEAVE %02d:%02d", eb / 60, eb % 60);
+            display.setCursor(14, y0 + 74);
+            display.print(line);
+        }
+        else
+        {
+            bool any = false;
+            for (int s = 0; s < dt->count; s++)
+                if (dt->slots[s].q >= 60 && dt->slots[s].med > now)
+                    any = true;
+            display.setFont(&FreeSans9pt7b);
+            display.setCursor(14 + 8, y0 + 52);
+            display.print("--");
+            display.setFont(&FreeSerif12pt7b);
+            display.setCursor(196, y0 + 34);
+            if (any)
+            {
+                display.print("--");
+            }
+            else if (now >= 0 && dt->count > 0 && dt->slots[dt->count - 1].med <= now)
+            {
+                display.print("DONE");
+            }
+            else if (now >= 0 && dt->count > 0 && dt->slots[0].med > now)
+            {
+                char fb[32];
+                snprintf(fb, sizeof(fb), "FIRST %02d:%02d", dt->slots[0].med / 60, dt->slots[0].med % 60);
+                display.print(fb);
+            }
+            else
+            {
+                display.print("--");
+            }
+        }
+    }
+}
+
 void drawCardScreen()
 {
     if (curCard == 5 && bookModeList && bookConfigCount > 0)
@@ -515,6 +674,11 @@ void drawCardScreen()
         display.print("EXIT:BACK");
         display.setCursor(150, 780);
         display.print(todoPending[0] ? "PENDING" : "OK:TOGGLE");
+        return;
+    }
+    if (curCard == 1)
+    {
+        drawBusCard();
         return;
     }
     if (pageReady[curCard])
@@ -1610,6 +1774,8 @@ void setup()
         delay(200);
     }
     wifiOk = WiFi.status() == WL_CONNECTED;
+    if (wifiOk)
+        configTime(9 * 3600, 0, "pool.ntp.org");
     Serial.printf("WiFi: %s\n", wifiOk ? "ok" : "no");
     if (wifiOk)
     {
@@ -2009,6 +2175,25 @@ void loop()
         lastActivity = millis();
     }
     delay(2);
+    static int lastBusMinute = -1;
+    if (screen == SCREEN_CARD && curCard == 1)
+    {
+        int bm = kstMinutes();
+        if (bm != lastBusMinute)
+        {
+            lastBusMinute = bm;
+            display.setPartialWindow(0, 0, SCREEN_W, SCREEN_H);
+            display.firstPage();
+            do
+            {
+                drawBusCard();
+            } while (display.nextPage());
+        }
+    }
+    else
+    {
+        lastBusMinute = -1;
+    }
     if (millis() - lastActivity > IDLE_SLEEP_MS)
     {
         sleepNow();
