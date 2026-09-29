@@ -2228,8 +2228,16 @@ void loop()
             display.print("PRESS ANY KEY");
         } while (display.nextPage());
     }
-    if (anyActivity)
+    if (busModalShown && anyActivity)
+    {
         busModalShown = false;
+        display.setPartialWindow(0, 0, SCREEN_W, SCREEN_H);
+        display.firstPage();
+        do
+        {
+            drawBusCard();
+        } while (display.nextPage());
+    }
     if (screen == SCREEN_CARD && curCard == 1)
     {
         int bm = kstMinutes();
