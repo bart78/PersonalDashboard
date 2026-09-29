@@ -1802,7 +1802,7 @@ void setup()
             if (saved > 0)
             {
                 timeval tv;
-                tv.tv_sec = saved + (time_t)(esp_sleep_get_wakeup_time() / 1000000);
+                tv.tv_sec = saved;
                 tv.tv_usec = 0;
                 settimeofday(&tv, NULL);
                 Serial.printf("Clock restored from NVS (offline boot)\n");
