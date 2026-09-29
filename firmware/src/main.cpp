@@ -1437,6 +1437,13 @@ void syncAll()
     syncPendingTodos();
     if (WiFi.status() == WL_CONNECTED)
     {
+        struct tm ck;
+        if (!getLocalTime(&ck, 0) || ck.tm_year < 126)
+        {
+            Serial.println("NTP re-sync on sync");
+            configTime(9 * 3600, 0, "pool.ntp.org");
+            getLocalTime(&ck, 5000);
+        }
         fetchConfig();
     }
     int total = 0;
