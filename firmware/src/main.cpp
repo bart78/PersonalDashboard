@@ -2214,7 +2214,12 @@ void loop()
     delay(2);
     static int lastBusMinute = -1;
     static bool busModalShown = false;
-    if (screen == SCREEN_CARD && curCard == 1 && millis() - lastActivity > 10 * 60 * 1000 - 15000 && !busModalShown)
+    static time_t lastActivityWall = 0;
+    if (anyActivity)
+        lastActivityWall = time(nullptr);
+    if (lastActivityWall == 0)
+        lastActivityWall = time(nullptr);
+    if (screen == SCREEN_CARD && curCard == 1 && time(nullptr) - lastActivityWall > 10 * 60 - 15 && !busModalShown)
     {
         busModalShown = true;
         display.setPartialWindow(56, 356, 160, 84);
@@ -2262,8 +2267,12 @@ void loop()
     {
         lastBusMinute = -1;
     }
-    unsigned long idleFor = (screen == SCREEN_CARD && curCard == 1) ? (10UL * 60 * 1000) : IDLE_SLEEP_MS;
-    if (millis() - lastActivity > idleFor)
+    if (screen == SCREEN_CARD && curCard == 1)
+    {
+        if (time(nullptr) - lastActivityWall > 10 * 60)
+            sleepNow();
+    }
+    else if (millis() - lastActivity > IDLE_SLEEP_MS)
     {
         sleepNow();
     }
