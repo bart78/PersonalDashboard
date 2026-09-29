@@ -2213,6 +2213,7 @@ void loop()
         if (bm != lastBusMinute)
         {
             lastBusMinute = bm;
+            lastActivity = millis();
             display.setPartialWindow(0, 0, SCREEN_W, SCREEN_H);
             display.firstPage();
             do
