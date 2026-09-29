@@ -1415,7 +1415,6 @@ void showSyncModal(const char *msg, int cur, int total)
     display.firstPage();
     do
     {
-        drawHomeFull();
         display.fillRect(56, 368, 160, 68, GxEPD_WHITE);
         display.drawRect(56, 368, 160, 68, GxEPD_BLACK);
         display.setFont(&FreeSans9pt7b);
