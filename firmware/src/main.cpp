@@ -507,7 +507,7 @@ void drawBusCard()
         for (int s = 0; s < dt->count; s++)
         {
             const BusSlot &sl = dt->slots[s];
-            if (now >= 0 && sl.med > now && sl.claimable)
+            if (now >= 0 && sl.late > now && sl.claimable)
             {
                 if (nextIdx < 0)
                     nextIdx = s;
@@ -536,11 +536,11 @@ void drawBusCard()
             const BusSlot &sl = dt->slots[nextIdx];
             display.setFont(&FreeSans9pt7b);
             char mt[8];
-            snprintf(mt, sizeof(mt), "%02d:%02d", sl.med / 60, sl.med % 60);
+            snprintf(mt, sizeof(mt), "%02d:%02d", sl.early / 60, sl.early % 60);
             display.setCursor(14 + badgeW + 8, y0 + 33);
             display.print(mt);
             display.setFont(&FreeSerif12pt7b);
-            int mins = sl.med - now;
+            int mins = sl.early - now;
             char hero[24];
             if (mins <= 0)
                 snprintf(hero, sizeof(hero), "DUE");
@@ -571,28 +571,30 @@ void drawBusCard()
         }
         else
         {
-            bool any = false;
+            int firstClaim = -1, lastClaim = -1;
             for (int s = 0; s < dt->count; s++)
-                if (dt->slots[s].claimable && dt->slots[s].med > now)
-                    any = true;
+            {
+                if (dt->slots[s].claimable)
+                {
+                    if (firstClaim < 0)
+                        firstClaim = s;
+                    lastClaim = s;
+                }
+            }
             display.setFont(&FreeSans9pt7b);
             display.setCursor(14 + badgeW + 8, y0 + 33);
             display.print("--");
             display.setFont(&FreeSerif12pt7b);
             display.setCursor(196, y0 + 34);
-            if (any)
-            {
-                display.print("--");
-            }
-            else if (now >= 0 && dt->count > 0 && dt->slots[dt->count - 1].med <= now)
-            {
-                display.print("DONE");
-            }
-            else if (now >= 0 && dt->count > 0 && dt->slots[0].med > now)
+            if (now >= 0 && firstClaim >= 0 && dt->slots[firstClaim].early > now)
             {
                 char fb[32];
-                snprintf(fb, sizeof(fb), "FIRST %02d:%02d", dt->slots[0].med / 60, dt->slots[0].med % 60);
+                snprintf(fb, sizeof(fb), "FIRST %02d:%02d", dt->slots[firstClaim].early / 60, dt->slots[firstClaim].early % 60);
                 display.print(fb);
+            }
+            else if (now >= 0 && lastClaim >= 0 && dt->slots[lastClaim].late <= now)
+            {
+                display.print("DONE");
             }
             else
             {
