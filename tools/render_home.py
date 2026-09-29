@@ -39,7 +39,7 @@ tracked(d, (P(12), P(4)), "PERSONAL DASHBOARD  ED.001", tiny, 0, P(1))
 d.text((P(12), P(20)), "bart78@", font=word, fill=0)
 d.rectangle([P(12), P(70), P(260), P(71)], fill=0)
 
-CARD_NAMES = ["WEATHER", "NAV", "CALENDAR", "NEWS",
+CARD_NAMES = ["WEATHER", "BUS", "CALENDAR", "NEWS",
               "STOCKS", "BOOKS", "CARD", "TODO"]
 ROWS = [120, 276, 432, 588]
 CELL_H = 140
@@ -62,7 +62,7 @@ for i, name in enumerate(CARD_NAMES):
 d1.rectangle([12, 70, 260, 71], fill=0)
 d1.rectangle([12, 776, 260, 777], fill=0)
 data = img.tobytes()
-with open("/Users/bartjarochowski/Dev/AntigravityProjects/Crow/m3project/src/home_base.h", "w") as f:
+with open("/Users/bartjarochowski/Dev/AntigravityProjects/Crow/firmware/src/home_base.h", "w") as f:
     f.write("// home_base 272x792 1bpp (%d bytes)\n" % len(data))
     f.write("const unsigned char HOME_BASE[%d] = {\n" % len(data))
     for i in range(0, len(data), 16):
