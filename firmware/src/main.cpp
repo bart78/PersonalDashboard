@@ -489,18 +489,16 @@ void drawBusCard()
     display.setTextColor(GxEPD_BLACK);
     display.setCursor(12, 28);
     display.print(dtype);
+    char tbuf[16];
     if (now >= 0)
-    {
-        char tbuf[16];
         snprintf(tbuf, sizeof(tbuf), "%02d:%02d", now / 60, now % 60);
-        display.setCursor(200, 28);
-        display.print(tbuf);
-    }
     else
-    {
-        display.setCursor(168, 28);
-        display.print("NO CLOCK");
-    }
+        snprintf(tbuf, sizeof(tbuf), "TIME?");
+    int16_t tx1, ty1;
+    uint16_t tw, th;
+    display.getTextBounds(tbuf, 0, 0, &tx1, &ty1, &tw, &th);
+    display.setCursor(272 - 14 - tw - tx1, 28);
+    display.print(tbuf);
     for (int r = 0; r < BUS_MODEL.route_count; r++)
     {
         int y0 = 60 + r * 102;
