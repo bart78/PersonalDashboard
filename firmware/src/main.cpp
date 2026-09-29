@@ -503,20 +503,19 @@ void drawBusCard()
         int y0 = 60 + r * 102;
         display.drawRect(6, y0, 260, 96, GxEPD_BLACK);
         const BusDayType *dt = &busDayType(r);
-        int nextIdx = -1, nextNextIdx = -1;
+        int nextIdx = -1, nxtqIdx = -1;
         for (int s = 0; s < dt->count; s++)
         {
             const BusSlot &sl = dt->slots[s];
-            if (now >= 0 && sl.med > now && sl.q >= 60)
+            if (now >= 0 && sl.med > now)
             {
                 if (nextIdx < 0)
                     nextIdx = s;
-                else if (nextNextIdx < 0)
-                    nextNextIdx = s;
-                else
-                    break;
+                else if (nxtqIdx < 0 && sl.q >= 60)
+                    nxtqIdx = s;
             }
         }
+        bool claim = nextIdx >= 0 && dt->slots[nextIdx].q >= 60;
         int badgeW = 0;
         {
             int16_t x1, y1;
@@ -531,7 +530,7 @@ void drawBusCard()
         display.setCursor(14 + 8, y0 + 33);
         display.print(BUS_MODEL.route_ids[r]);
         display.setTextColor(GxEPD_BLACK);
-        if (nextIdx >= 0)
+        if (nextIdx >= 0 && claim)
         {
             const BusSlot &sl = dt->slots[nextIdx];
             display.setFont(&FreeSans9pt7b);
@@ -553,15 +552,35 @@ void drawBusCard()
             display.print(hero);
             display.setFont(&FreeSans9pt7b);
             char line[64];
-            if (nextNextIdx >= 0)
+            if (nxtqIdx >= 0)
                 snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d  NXT %02d:%02d",
                          sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60,
-                         dt->slots[nextNextIdx].med / 60, dt->slots[nextNextIdx].med % 60);
+                         dt->slots[nxtqIdx].med / 60, dt->slots[nxtqIdx].med % 60);
             else
                 snprintf(line, sizeof(line), "ARR %02d:%02d-%02d:%02d",
                          sl.early / 60, sl.early % 60, sl.late / 60, sl.late % 60);
             display.setCursor(14, y0 + 74);
             display.print(line);
+        }
+        else if (nextIdx >= 0)
+        {
+            display.setFont(&FreeSans9pt7b);
+            display.setCursor(14 + badgeW + 8, y0 + 33);
+            display.print("--");
+            display.setFont(&FreeSerif12pt7b);
+            display.setCursor(196, y0 + 34);
+            display.print("--");
+            display.setFont(&FreeSans9pt7b);
+            if (nxtqIdx >= 0)
+            {
+                const BusSlot &ns = dt->slots[nxtqIdx];
+                char line[64];
+                snprintf(line, sizeof(line), "NXT %02d:%02d  ARR %02d:%02d-%02d:%02d",
+                         ns.med / 60, ns.med % 60,
+                         ns.early / 60, ns.early % 60, ns.late / 60, ns.late % 60);
+                display.setCursor(14, y0 + 74);
+                display.print(line);
+            }
         }
         else
         {
