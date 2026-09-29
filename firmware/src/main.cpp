@@ -507,7 +507,7 @@ void drawBusCard()
         for (int s = 0; s < dt->count; s++)
         {
             const BusSlot &sl = dt->slots[s];
-            if (now >= 0 && sl.med > now && sl.q >= 60 && sl.n >= 2)
+            if (now >= 0 && sl.med > now && sl.claimable)
             {
                 if (nextIdx < 0)
                     nextIdx = s;
@@ -573,7 +573,7 @@ void drawBusCard()
         {
             bool any = false;
             for (int s = 0; s < dt->count; s++)
-                if (dt->slots[s].q >= 60 && dt->slots[s].med > now)
+                if (dt->slots[s].claimable && dt->slots[s].med > now)
                     any = true;
             display.setFont(&FreeSans9pt7b);
             display.setCursor(14 + badgeW + 8, y0 + 33);
