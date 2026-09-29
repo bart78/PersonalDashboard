@@ -459,6 +459,8 @@ int kstMinutes()
     struct tm t;
     if (!getLocalTime(&t, 0))
         return -1;
+    if (t.tm_year < 126)
+        return -1;
     return t.tm_hour * 60 + t.tm_min;
 }
 
@@ -1779,7 +1781,11 @@ void setup()
     }
     wifiOk = WiFi.status() == WL_CONNECTED;
     if (wifiOk)
+    {
         configTime(9 * 3600, 0, "pool.ntp.org");
+        struct tm ntp_t;
+        getLocalTime(&ntp_t, 6000);
+    }
     Serial.printf("WiFi: %s\n", wifiOk ? "ok" : "no");
     if (wifiOk)
     {
