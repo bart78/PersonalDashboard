@@ -456,7 +456,6 @@ void updateBookRows(int a, int b)
 }
 
 #include "bus_model.h"
-#include "clock_font.h"
 
 int kstDayNum()
 {
