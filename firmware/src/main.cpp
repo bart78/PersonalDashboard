@@ -198,6 +198,17 @@ void drawHomeOverlays()
 {
     display.setFont(&FreeSans9pt7b);
     display.setTextColor(GxEPD_BLACK);
+    struct tm ht;
+    if (getLocalTime(&ht, 0) && ht.tm_year >= 126)
+    {
+        char tbuf[8];
+        snprintf(tbuf, sizeof(tbuf), "%02d:%02d", ht.tm_hour, ht.tm_min);
+        int16_t tx1, ty1;
+        uint16_t tw, th;
+        display.getTextBounds(tbuf, 0, 0, &tx1, &ty1, &tw, &th);
+        display.setCursor(272 - 12 - tw - tx1, 14);
+        display.print(tbuf);
+    }
     display.setCursor(12, 96);
     display.print(dateStr);
     int bat = cachedBatteryPct;
