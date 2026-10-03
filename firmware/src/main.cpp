@@ -6,6 +6,7 @@
 #include <time.h>
 #include "esp_sleep.h"
 #include <esp32-hal-psram.h>
+#include "clock_font.h"
 #include <SPIFFS.h>
 #include "esp_spiffs.h"
 #include <PNGdec.h>
