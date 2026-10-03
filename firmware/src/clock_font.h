@@ -2,7 +2,7 @@
 #pragma once
 #include <Adafruit_GFX.h>
 
-static const uint8_t ClockBitmaps[] = {
+static uint8_t ClockBitmaps[] = {
   6,9,9,9,9,9,6,0,1,3,1,1,
   1,1,1,0,6,9,1,2,4,8,15,0,
   6,9,1,6,1,9,6,0,2,6,6,10,
@@ -13,7 +13,7 @@ static const uint8_t ClockBitmaps[] = {
   0,1,
 };
 
-static const GFXglyph ClockGlyphs[] = {
+static GFXglyph ClockGlyphs[] = {
   {0, 4, 7, 5, 0, -7},
   {8, 2, 7, 5, 1, -7},
   {16, 4, 7, 5, 0, -7},
