@@ -208,7 +208,7 @@ void drawHomeOverlays()
         int16_t tx1, ty1;
         uint16_t tw, th;
         display.getTextBounds(tbuf, 0, 0, &tx1, &ty1, &tw, &th);
-        display.setCursor(272 - 12 - tw - tx1, 12);
+        display.setCursor(272 - 12 - tw - tx1, 6);
         display.print(tbuf);
         display.setFont(&FreeSans9pt7b);
     }
