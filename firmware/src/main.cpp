@@ -740,6 +740,7 @@ void sleepNow()
     Preferences tp;
     tp.begin("crow", false);
     tp.putLong("lastTime", (long)time(nullptr));
+    tp.putLong("lastTimer", (long)esp_timer_get_time());
     tp.end();
     SD.end();
     WiFi.disconnect();
@@ -1802,11 +1803,18 @@ void setup()
             tp.end();
             if (saved > 0)
             {
+                time_t savedTimer = 0;
+                tp.begin("crow", false);
+                savedTimer = tp.getLong("lastTimer", 0);
+                tp.end();
+                time_t elapsed = 0;
+                if (savedTimer > 0)
+                    elapsed = (time_t)(esp_timer_get_time() - savedTimer) / 1000000;
                 timeval tv;
-                tv.tv_sec = saved;
+                tv.tv_sec = saved + elapsed;
                 tv.tv_usec = 0;
                 settimeofday(&tv, NULL);
-                Serial.printf("Clock restored from NVS (offline boot)\n");
+                Serial.printf("Clock restored from NVS (+%lds elapsed, offline boot)\n", (long)elapsed);
             }
         }
     }
