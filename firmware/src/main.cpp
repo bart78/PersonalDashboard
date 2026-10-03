@@ -204,7 +204,7 @@ void drawHomeOverlays()
     {
         char tbuf[8];
         snprintf(tbuf, sizeof(tbuf), "%02d:%02d", ht.tm_hour, ht.tm_min);
-        display.setFont(&ClockFont);
+        display.setFont(NULL);
         int16_t tx1, ty1;
         uint16_t tw, th;
         display.getTextBounds(tbuf, 0, 0, &tx1, &ty1, &tw, &th);
