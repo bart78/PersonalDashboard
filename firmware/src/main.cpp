@@ -203,11 +203,13 @@ void drawHomeOverlays()
     {
         char tbuf[8];
         snprintf(tbuf, sizeof(tbuf), "%02d:%02d", ht.tm_hour, ht.tm_min);
+        display.setFont(&ClockFont);
         int16_t tx1, ty1;
         uint16_t tw, th;
         display.getTextBounds(tbuf, 0, 0, &tx1, &ty1, &tw, &th);
         display.setCursor(272 - 12 - tw - tx1, 12);
         display.print(tbuf);
+        display.setFont(&FreeSans9pt7b);
     }
     display.setCursor(12, 96);
     display.print(dateStr);
@@ -454,6 +456,7 @@ void updateBookRows(int a, int b)
 }
 
 #include "bus_model.h"
+#include "clock_font.h"
 
 int kstDayNum()
 {
